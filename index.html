@@ -387,22 +387,8 @@ async function pollAll() {
   await Promise.allSettled([pollLocation(), pollMeta(), pollPhotos(), pollApps(), pollHistory()]);
 }
 
-// RTDB uses JSONP because Firebase RTDB doesn't set CORS headers
-// path should NOT include .json suffix — it's added automatically
-function fetchRTDB(path, query) {
-  trackRead();
-  return new Promise((resolve) => {
-    const cb = '_rtdb' + Date.now();
-    window[cb] = function(data) { cleanup(); resolve(data); };
-    const s = document.createElement('script');
-    const qs = query ? '?' + query + '&' : '?';
-    s.src = `${RTDB}/${path}.json${qs}callback=${cb}`;
-    const timeout = setTimeout(() => { cleanup(); resolve(null); }, 10000);
-    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
-    s.onerror = cleanup;
-    document.head.appendChild(s);
-  });
-}
+// --- Firebase helpers ---
+// Firestore REST API (has CORS) — preferred
 async function fetchFirestore(path) {
   trackRead();
   try {
@@ -439,23 +425,101 @@ async function runFirestoreQuery(parentDoc, collectionId, field, op, value, limi
     return results.filter(r => r.document).map(r => r.document);
   } catch { return []; }
 }
+// Collection group query across ALL parent docs (e.g., all `info` docs under devices/*/)
+async function fetchFirestoreCollectionGroup(collectionId, limit = 50) {
+  trackRead();
+  try {
+    const body = JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId, allDescendants: true }],
+        limit
+      }
+    });
+    const r = await fetch(`${FIRESTORE}:runQuery`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body
+    });
+    if (!r.ok) return [];
+    const results = await r.json();
+    return results.filter(r => r.document).map(r => r.document);
+  } catch { return []; }
+}
+// RTDB uses JSONP (no CORS on RTDB) — fallback only
+function fetchRTDB(path, query) {
+  trackRead();
+  return new Promise((resolve) => {
+    const cb = '_rtdb' + Date.now();
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    const qs = query ? '?' + query + '&' : '?';
+    s.src = `${RTDB}/${path}.json${qs}callback=${cb}`;
+    const timeout = setTimeout(() => { cleanup(); resolve(null); }, 10000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    s.onerror = cleanup;
+    document.head.appendChild(s);
+  });
+}
+// Try Firestore first, fall back to RTDB JSONP for backward compat
+async function fetchMetrics(id) {
+  const doc = await fetchFirestore(`devices/${id}/metrics/latest`);
+  if (doc && doc.fields) return firestoreFieldsToObj(doc.fields);
+  const m = await fetchRTDB(`devices/${id}/metrics/latest`);
+  return m;
+}
+function firestoreFieldsToObj(fields) {
+  const o = {};
+  for (const k in fields) {
+    const v = fields[k];
+    if (v.stringValue !== undefined) o[k] = v.stringValue;
+    else if (v.integerValue !== undefined) o[k] = parseInt(v.integerValue);
+    else if (v.doubleValue !== undefined) o[k] = v.doubleValue;
+    else if (v.booleanValue !== undefined) o[k] = v.booleanValue;
+    else o[k] = v;
+  }
+  return o;
+}
 
 async function fetchDevices() {
+  // Try Firestore collection group query on `info` docs
+  const infoDocs = await fetchFirestoreCollectionGroup('info', 20);
+  if (infoDocs && infoDocs.length) {
+    devices = {};
+    const sel = document.getElementById('deviceSelect');
+    const opts = [];
+    for (const doc of infoDocs) {
+      const parts = doc.name.split('/');
+      const idx = parts.indexOf('devices');
+      if (idx < 0 || !parts[idx + 1]) continue;
+      const id = parts[idx + 1];
+      const fields = doc.fields || {};
+      const model = fields.deviceModel?.stringValue || '';
+      const manuf = fields.manufacturer?.stringValue || '';
+      const lastSync = fields.lastSync?.stringValue || '';
+      const label = [manuf, model].filter(Boolean).join(' ') || id.slice(0, 8);
+      devices[id] = { id, label, model, manuf, lastSync };
+      opts.push(`<option value="${id}">${label}</option>`);
+    }
+    sel.innerHTML = opts.join('');
+    if (!selectedDevice || !devices[selectedDevice]) selectedDevice = Object.keys(devices)[0];
+    sel.value = selectedDevice;
+    return;
+  }
+
+  // Fallback: RTDB JSONP shallow query
   const data = await fetchRTDB('devices', 'shallow=true');
   if (!data) {
     document.getElementById('statusDot').textContent = '\u2716 No data';
     document.getElementById('statusDot').className = 'status warn';
     return;
   }
-  devices = data;
+  devices = Object.keys(data).reduce((acc, id) => { acc[id] = { id, label: id.slice(0,8) + '...' }; return acc; }, {});
   const sel = document.getElementById('deviceSelect');
-  const keys = Object.keys(data);
+  const keys = Object.keys(devices);
   if (!keys.length) {
     document.getElementById('statusDot').textContent = '\u2716 No devices';
     document.getElementById('statusDot').className = 'status warn';
     return;
   }
-  sel.innerHTML = keys.map(k => `<option value="${k}">${k.slice(0,8)}...</option>`).join('');
+  sel.innerHTML = keys.map(k => `<option value="${k}">${devices[k].label}</option>`).join('');
   if (!selectedDevice || !keys.includes(selectedDevice)) selectedDevice = keys[0];
   sel.value = selectedDevice;
 }
@@ -470,11 +534,17 @@ async function pollLocation() {
 }
 async function pollMeta() {
   if (!selectedDevice) return;
-  const m = await fetchRTDB(`devices/${selectedDevice}/metrics/latest`);
+  const m = await fetchMetrics(selectedDevice);
   if (!m) return;
-  document.getElementById('batVal').textContent = m.batteryPct + '%' + (m.isCharging ? ' \u26A1' : '');
+  document.getElementById('batVal').textContent = (m.batteryPct || '--') + '%' + (m.isCharging ? ' \u26A1' : '');
   document.getElementById('wifiVal').textContent = m.wifiSsid || '--';
   document.getElementById('devVal').textContent = m.deviceModel || '--';
+  // Update device label in dropdown with model name if known
+  if (m.deviceModel && devices[selectedDevice]) {
+    const label = [m.manufacturer, m.deviceModel].filter(Boolean).join(' ');
+    devices[selectedDevice].label = label;
+    document.querySelector(`#deviceSelect option[value="${selectedDevice}"]`).textContent = label;
+  }
   const ts = parseInt(m.ts_ms || '0');
   if (ts > lastUpdateTime) {
     lastUpdateTime = ts;
