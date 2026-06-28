@@ -98,6 +98,7 @@ td{padding:6px 4px;border-bottom:1px solid var(--border)}
         <div><div class="label">Battery</div><div class="value" id="batVal">--</div></div>
         <div><div class="label">WiFi</div><div class="value" id="wifiVal">--</div></div>
         <div><div class="label">Last Seen</div><div class="value" id="seenVal">--</div></div>
+        <div><div class="label">Updated</div><div class="value" id="updatedVal" style="font-size:11px">--</div></div>
       </div>
       <div class="coord-box" id="coordBox" style="cursor:pointer" title="Click to copy">--</div>
       <div class="label">Address</div>
@@ -154,6 +155,7 @@ let cachedAddresses = JSON.parse(localStorage.getItem('geoCache') || '{}');
 let nomQueue = [];
 let nomProcessing = false;
 let playbackRunning = false;
+let lastUpdateTime = 0;
 let playbackIdx = 0;
 let playbackTimer = null;
 let cameraHome = null;
@@ -381,7 +383,9 @@ function schedulePoll(name, interval, fn) {
   pollTimers.push(setTimeout(run, interval));
 }
 
-async function pollAll() { await Promise.all([pollLocation(), pollMeta(), pollPhotos(), pollApps(), pollHistory()]); }
+async function pollAll() {
+  await Promise.allSettled([pollLocation(), pollMeta(), pollPhotos(), pollApps(), pollHistory()]);
+}
 
 // RTDB uses JSONP because Firebase RTDB doesn't set CORS headers
 // path should NOT include .json suffix — it's added automatically
@@ -389,52 +393,68 @@ function fetchRTDB(path, query) {
   trackRead();
   return new Promise((resolve) => {
     const cb = '_rtdb' + Date.now();
-    window[cb] = function(data) { delete window[cb]; document.head.removeChild(s); resolve(data); };
+    window[cb] = function(data) { cleanup(); resolve(data); };
     const s = document.createElement('script');
     const qs = query ? '?' + query + '&' : '?';
     s.src = `${RTDB}/${path}.json${qs}callback=${cb}`;
-    s.onerror = function() { delete window[cb]; document.head.removeChild(s); resolve(null); };
+    const timeout = setTimeout(() => { cleanup(); resolve(null); }, 10000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    s.onerror = cleanup;
     document.head.appendChild(s);
   });
 }
 async function fetchFirestore(path) {
   trackRead();
-  const r = await fetch(`${FIRESTORE}/${path}`);
-  if (!r.ok) return null;
-  return r.json();
+  try {
+    const r = await fetch(`${FIRESTORE}/${path}`);
+    if (!r.ok) return null;
+    return r.json();
+  } catch { return null; }
 }
 async function listFirestoreDocs(path) {
   trackRead();
-  const r = await fetch(`${FIRESTORE}/${path}?pageSize=50`);
-  if (!r.ok) return [];
-  const data = await r.json();
-  return data.documents || [];
+  try {
+    const r = await fetch(`${FIRESTORE}/${path}?pageSize=50`);
+    if (!r.ok) return [];
+    const data = await r.json();
+    return data.documents || [];
+  } catch { return []; }
 }
 async function runFirestoreQuery(parentDoc, collectionId, field, op, value, limit = 50) {
   trackRead();
-  const body = JSON.stringify({
-    structuredQuery: {
-      from: [{ collectionId }],
-      where: { fieldFilter: { field: { fieldPath: field }, op, value: { integerValue: String(value) } } },
-      orderBy: [{ field: { fieldPath: field }, direction: 'ASCENDING' }],
-      limit
-    }
-  });
-  const r = await fetch(`${FIRESTORE}/${parentDoc}:runQuery`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body
-  });
-  if (!r.ok) return [];
-  const results = await r.json();
-  return results.filter(r => r.document).map(r => r.document);
+  try {
+    const body = JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId }],
+        where: { fieldFilter: { field: { fieldPath: field }, op, value: { integerValue: String(value) } } },
+        orderBy: [{ field: { fieldPath: field }, direction: 'ASCENDING' }],
+        limit
+      }
+    });
+    const r = await fetch(`${FIRESTORE}/${parentDoc}:runQuery`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body
+    });
+    if (!r.ok) return [];
+    const results = await r.json();
+    return results.filter(r => r.document).map(r => r.document);
+  } catch { return []; }
 }
 
 async function fetchDevices() {
   const data = await fetchRTDB('devices', 'shallow=true');
-  if (!data) return;
+  if (!data) {
+    document.getElementById('statusDot').textContent = '\u2716 No data';
+    document.getElementById('statusDot').className = 'status warn';
+    return;
+  }
   devices = data;
   const sel = document.getElementById('deviceSelect');
   const keys = Object.keys(data);
-  if (!keys.length) return;
+  if (!keys.length) {
+    document.getElementById('statusDot').textContent = '\u2716 No devices';
+    document.getElementById('statusDot').className = 'status warn';
+    return;
+  }
   sel.innerHTML = keys.map(k => `<option value="${k}">${k.slice(0,8)}...</option>`).join('');
   if (!selectedDevice || !keys.includes(selectedDevice)) selectedDevice = keys[0];
   sel.value = selectedDevice;
@@ -450,12 +470,18 @@ async function pollLocation() {
 }
 async function pollMeta() {
   if (!selectedDevice) return;
-  await fetchDevices();
   const m = await fetchRTDB(`devices/${selectedDevice}/metrics/latest`);
   if (!m) return;
   document.getElementById('batVal').textContent = m.batteryPct + '%' + (m.isCharging ? ' \u26A1' : '');
   document.getElementById('wifiVal').textContent = m.wifiSsid || '--';
   document.getElementById('devVal').textContent = m.deviceModel || '--';
+  const ts = parseInt(m.ts_ms || '0');
+  if (ts > lastUpdateTime) {
+    lastUpdateTime = ts;
+    document.getElementById('updatedVal').textContent = pkt(ts) + ' (phone)';
+    document.getElementById('statusDot').textContent = '\u25CF Live';
+    document.getElementById('statusDot').className = 'status';
+  }
 }
 let lastPhotoTs = 0;
 async function pollPhotos() {
@@ -491,6 +517,10 @@ async function pollApps() {
   if (!selectedDevice) return;
   const docs = await listFirestoreDocs(`devices/${selectedDevice}/apps`);
   const chart = document.getElementById('appsChart');
+  if (!docs || !docs.length) {
+    chart.innerHTML = '<div class="label">No app usage data yet</div>';
+    return;
+  }
   const sorted = docs.map(d => {
     const f = d.fields || {};
     return { name: f.appName?.stringValue || '?', ms: parseInt(f.totalForegroundMs?.integerValue || '0') };
@@ -501,7 +531,7 @@ async function pollApps() {
       <span class="bar-label">${a.name}</span>
       <div class="bar-fill" style="width:${(a.ms/maxMs*100).toFixed(0)}%"></div>
       <span class="bar-val">${(a.ms/60000).toFixed(1)}m</span>
-    </div>`).join('') || '<div class="label">No usage data</div>';
+    </div>`).join('');
 }
 async function pollHistory() {
   if (!selectedDevice) return;
@@ -645,8 +675,8 @@ document.addEventListener('keydown', e => {
 // --- Init ---
 async function init() {
   if (Notification.permission === 'default') Notification.requestPermission();
-  await fetchDevices();
-  if (selectedDevice) await pollAll();
+  try { await fetchDevices(); } catch {}
+  if (selectedDevice) try { await pollAll(); } catch {}
   startPolling();
   renderGeofences();
   renderGeofenceList();
