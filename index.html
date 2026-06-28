@@ -384,13 +384,15 @@ function schedulePoll(name, interval, fn) {
 async function pollAll() { await Promise.all([pollLocation(), pollMeta(), pollPhotos(), pollApps(), pollHistory()]); }
 
 // RTDB uses JSONP because Firebase RTDB doesn't set CORS headers
-function fetchRTDB(path) {
+// path should NOT include .json suffix — it's added automatically
+function fetchRTDB(path, query) {
   trackRead();
   return new Promise((resolve) => {
     const cb = '_rtdb' + Date.now();
     window[cb] = function(data) { delete window[cb]; document.head.removeChild(s); resolve(data); };
     const s = document.createElement('script');
-    s.src = `${RTDB}/${path}.json?callback=${cb}`;
+    const qs = query ? '?' + query + '&' : '?';
+    s.src = `${RTDB}/${path}.json${qs}callback=${cb}`;
     s.onerror = function() { delete window[cb]; document.head.removeChild(s); resolve(null); };
     document.head.appendChild(s);
   });
@@ -427,7 +429,7 @@ async function runFirestoreQuery(parentDoc, collectionId, field, op, value, limi
 }
 
 async function fetchDevices() {
-  const data = await fetchRTDB('devices.json?shallow=true');
+  const data = await fetchRTDB('devices', 'shallow=true');
   if (!data) return;
   devices = data;
   const sel = document.getElementById('deviceSelect');
