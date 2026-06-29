@@ -107,8 +107,18 @@ td{padding:6px 4px;border-bottom:1px solid var(--border)}
       <div class="label">Address</div>
       <div class="value" id="addrVal" style="font-size:13px;color:var(--muted)">--</div>
     </div>
-    <div id="tab-photos"><div class="photo-grid" id="photoGrid"><div class="label">No photos yet</div></div></div>
+    <div id="tab-photos">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <span class="label">Photos</span>
+        <span id="photoUpdated" class="label" style="font-size:10px;color:var(--bronze)">--</span>
+      </div>
+      <div class="photo-grid" id="photoGrid"><div class="label">No photos yet</div></div>
+    </div>
     <div id="tab-timeline">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <span class="label">Timeline</span>
+        <span id="timelineUpdated" class="label" style="font-size:10px;color:var(--bronze)">--</span>
+      </div>
       <div class="filter-chips" id="timelineChips">
         <span class="chip active" data-filter="all">All</span>
         <span class="chip" data-filter="location">&#x1F4CD; Location</span>
@@ -117,8 +127,20 @@ td{padding:6px 4px;border-bottom:1px solid var(--border)}
       </div>
       <div id="timelineList"></div>
     </div>
-    <div id="tab-calls"><table><thead><tr><th>Time</th><th>Number</th><th>Duration</th><th>Type</th></tr></thead><tbody id="callsBody"></tbody></table></div>
-    <div id="tab-apps"><div id="appsChart"></div></div>
+    <div id="tab-calls">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <span class="label">Call Logs</span>
+        <span id="callsUpdated" class="label" style="font-size:10px;color:var(--bronze)">--</span>
+      </div>
+      <table><thead><tr><th>Time</th><th>Number</th><th>Duration</th><th>Type</th></tr></thead><tbody id="callsBody"></tbody></table>
+    </div>
+    <div id="tab-apps">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <span class="label">App Usage</span>
+        <span id="appsUpdated" class="label" style="font-size:10px;color:var(--bronze)">--</span>
+      </div>
+      <div id="appsChart"></div>
+    </div>
     <div id="tab-geofence"><div id="geofenceList"></div></div>
     <div id="tab-contacts">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
@@ -184,6 +206,11 @@ let lastUpdateTime = 0;
 let playbackIdx = 0;
 let playbackTimer = null;
 let cameraHome = null;
+function setCategoryTime(cat, ts) {
+  if (!ts) return;
+  const el = document.getElementById(cat + 'Updated');
+  if (el) el.textContent = pkt(ts);
+}
 
 // --- Poll Timers ---
 let pollTimers = [];
@@ -590,17 +617,31 @@ async function pollPhotos() {
   } else {
     docs = await listFirestoreDocs(`devices/${selectedDevice}/photos`);
   }
+  // If no Firestore docs, try RTDB
+  if (!docs || !docs.length) {
+    const rtdbData = await fetchRTDB(`devices/${selectedDevice}/photos`);
+    if (rtdbData && typeof rtdbData === 'object') {
+      docs = Object.entries(rtdbData).map(([k,v]) => {
+        const f = {};
+        if (v.data) f.data = {stringValue: v.data};
+        if (v.timestamp) f.timestamp = {integerValue: String(v.timestamp)};
+        return { name: k, fields: f };
+      }).sort((a,b) => {
+        const ta = parseInt(a.fields?.timestamp?.integerValue || '0');
+        const tb = parseInt(b.fields?.timestamp?.integerValue || '0');
+        return tb - ta;
+      });
+    }
+  }
   const grid = document.getElementById('photoGrid');
-  let newCount = 0;
-  for (const doc of docs) {
-    const ts = parseInt(doc.name.split('/').pop());
+  for (const doc of (docs || [])) {
+    const ts = parseInt(doc.name?.split('/')?.pop() || doc.name || '0');
     if (cachedPhotos[ts]) continue;
     const fields = doc.fields || {};
     const data = fields.data?.stringValue || '';
     const docTs = parseInt(fields.timestamp?.integerValue || '0');
     if (docTs > lastPhotoTs) lastPhotoTs = docTs;
     if (data && data.startsWith('/9j/')) {
-      newCount++;
       cachedPhotos[ts] = data;
       const img = document.createElement('img');
       img.src = 'data:image/jpeg;base64,' + data;
@@ -613,7 +654,20 @@ async function pollPhotos() {
 }
 async function pollApps() {
   if (!selectedDevice) return;
-  const docs = await listFirestoreDocs(`devices/${selectedDevice}/apps`);
+  let docs = await listFirestoreDocs(`devices/${selectedDevice}/apps`);
+  // Fallback to RTDB
+  if (!docs || !docs.length) {
+    const rtdbData = await fetchRTDB(`devices/${selectedDevice}/apps`);
+    if (rtdbData && typeof rtdbData === 'object') {
+      docs = Object.values(rtdbData).map(v => ({
+        fields: {
+          appName: {stringValue: v.appName || v.name || '?'},
+          totalForegroundMs: {integerValue: String(v.totalForegroundMs || v.ms || 0)},
+          lastUsedMs: {integerValue: String(v.lastUsedMs || v.ts || 0)}
+        }
+      }));
+    }
+  }
   const chart = document.getElementById('appsChart');
   if (!docs || !docs.length) {
     chart.innerHTML = '<div class="label">No app usage data yet</div>';
@@ -633,7 +687,28 @@ async function pollApps() {
 }
 async function pollHistory() {
   if (!selectedDevice) return;
-  const docs = await listFirestoreDocs(`devices/${selectedDevice}/timeline`);
+  let docs = await listFirestoreDocs(`devices/${selectedDevice}/timeline`);
+  // Fallback to RTDB
+  if (!docs || !docs.length) {
+    const rtdbData = await fetchRTDB(`devices/${selectedDevice}/timeline`);
+    if (rtdbData && typeof rtdbData === 'object') {
+      docs = Object.entries(rtdbData).map(([k,v]) => ({
+        name: k,
+        fields: {
+          type: {stringValue: v.type || 'event'},
+          ts_ms: {integerValue: String(v.ts_ms || v.timestamp || 0)},
+          contactName: {stringValue: v.contactName || v.contact || ''},
+          messagePreview: {stringValue: v.messagePreview || v.message || ''},
+          duration: {stringValue: v.duration || ''},
+          direction: {stringValue: v.direction || ''}
+        }
+      })).sort((a,b) => {
+        const ta = parseInt(a.fields.ts_ms?.integerValue || '0');
+        const tb = parseInt(b.fields.ts_ms?.integerValue || '0');
+        return tb - ta;
+      });
+    }
+  }
   renderTimeline(docs.slice(0, 30));
   renderCalls(docs.slice(0, 30));
 }
