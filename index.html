@@ -534,7 +534,41 @@ function firestoreFieldsToObj(fields) {
 }
 
 async function fetchDevices() {
-  // Try Firestore collection group query on `info` docs
+  // Primary: RTDB shallow query (works on all browsers incl. Safari)
+  const data = await fetchRTDB('devices', 'shallow=true');
+  if (data) {
+    devices = Object.keys(data).reduce((acc, id) => { acc[id] = { id, label: id.slice(0,8) + '...' }; return acc; }, {});
+    const sel = document.getElementById('deviceSelect');
+    const keys = Object.keys(devices);
+    if (keys.length) {
+      sel.innerHTML = keys.map(k => `<option value="${k}">${devices[k].label}</option>`).join('');
+      if (!selectedDevice || !keys.includes(selectedDevice)) selectedDevice = keys[0];
+      sel.value = selectedDevice;
+      // Try Firestore for nicer labels (non-blocking)
+      fetchFirestoreCollectionGroup('info', 20).then(infoDocs => {
+        if (infoDocs && infoDocs.length) {
+          for (const doc of infoDocs) {
+            const parts = doc.name.split('/');
+            const idx = parts.indexOf('devices');
+            if (idx < 0 || !parts[idx + 1]) continue;
+            const id = parts[idx + 1];
+            const fields = doc.fields || {};
+            const model = fields.deviceModel?.stringValue || '';
+            const manuf = fields.manufacturer?.stringValue || '';
+            if (model && devices[id]) {
+              devices[id].label = [manuf, model].filter(Boolean).join(' ') || id.slice(0, 8);
+            }
+          }
+          const sel2 = document.getElementById('deviceSelect');
+          sel2.innerHTML = Object.keys(devices).map(k => `<option value="${k}">${devices[k].label}</option>`).join('');
+          sel2.value = selectedDevice;
+        }
+      }).catch(() => {});
+      return;
+    }
+  }
+
+  // Fallback: Firestore collection group query
   const infoDocs = await fetchFirestoreCollectionGroup('info', 20);
   if (infoDocs && infoDocs.length) {
     devices = {};
@@ -546,11 +580,8 @@ async function fetchDevices() {
       if (idx < 0 || !parts[idx + 1]) continue;
       const id = parts[idx + 1];
       const fields = doc.fields || {};
-      const model = fields.deviceModel?.stringValue || '';
-      const manuf = fields.manufacturer?.stringValue || '';
-      const lastSync = fields.lastSync?.stringValue || '';
-      const label = [manuf, model].filter(Boolean).join(' ') || id.slice(0, 8);
-      devices[id] = { id, label, model, manuf, lastSync };
+      const label = [fields.manufacturer?.stringValue, fields.deviceModel?.stringValue].filter(Boolean).join(' ') || id.slice(0, 8);
+      devices[id] = { id, label };
       opts.push(`<option value="${id}">${label}</option>`);
     }
     sel.innerHTML = opts.join('');
@@ -559,24 +590,8 @@ async function fetchDevices() {
     return;
   }
 
-  // Fallback: RTDB JSONP shallow query
-  const data = await fetchRTDB('devices', 'shallow=true');
-  if (!data) {
-    document.getElementById('statusDot').textContent = '\u2716 No data';
-    document.getElementById('statusDot').className = 'status warn';
-    return;
-  }
-  devices = Object.keys(data).reduce((acc, id) => { acc[id] = { id, label: id.slice(0,8) + '...' }; return acc; }, {});
-  const sel = document.getElementById('deviceSelect');
-  const keys = Object.keys(devices);
-  if (!keys.length) {
-    document.getElementById('statusDot').textContent = '\u2716 No devices';
-    document.getElementById('statusDot').className = 'status warn';
-    return;
-  }
-  sel.innerHTML = keys.map(k => `<option value="${k}">${devices[k].label}</option>`).join('');
-  if (!selectedDevice || !keys.includes(selectedDevice)) selectedDevice = keys[0];
-  sel.value = selectedDevice;
+  document.getElementById('statusDot').textContent = '\u2716 No data';
+  document.getElementById('statusDot').className = 'status warn';
 }
 
 async function pollLocation() {
