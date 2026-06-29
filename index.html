@@ -712,7 +712,7 @@ async function pollHistory() {
         fields: {
           type: {stringValue: v.type || 'event'},
           ts_ms: {integerValue: String(v.ts_ms || v.timestamp || 0)},
-          contactName: {stringValue: v.contactName || v.contact || ''},
+          contactName: {stringValue: v.contactName || v.contact || v.contactNumber || ''},
           messagePreview: {stringValue: v.messagePreview || v.message || ''},
           duration: {stringValue: v.duration || ''},
           direction: {stringValue: v.direction || ''}
@@ -829,7 +829,7 @@ function renderTimeline(docs) {
     const type = f.type?.stringValue || '';
     const ts = parseInt(f.ts_ms?.integerValue || '0');
     const icon = type.includes('whatsapp') ? '\u{1F4AC}' : type.includes('call') ? '\u{1F4DE}' : '\u{1F4CD}';
-    const contact = f.contactName?.stringValue || f.contact?.stringValue || '';
+    const contact = f.contactName?.stringValue || f.contact?.stringValue || f.contactNumber?.stringValue || '';
     const msg = f.messagePreview?.stringValue || '';
     const dur = f.duration?.stringValue || '';
     const dir = f.direction?.stringValue || '';
@@ -845,7 +845,7 @@ function renderCalls(docs) {
   body.innerHTML = calls.map(d => {
     const f = d.fields || {};
     const ts = parseInt(f.ts_ms?.integerValue || '0');
-    const num = f.contactName?.stringValue || f.contact?.stringValue || '--';
+    const num = f.contactName?.stringValue || f.contact?.stringValue || f.contactNumber?.stringValue || '--';
     const dur = f.duration?.stringValue || '--';
     const dir = f.direction?.stringValue || '--';
     return `<tr><td>${pktShort(ts)}</td><td>${num}</td><td>${dur}</td><td>${dir}</td></tr>`;
