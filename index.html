@@ -18,11 +18,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .device-select{background:var(--bg);color:var(--text);border:1px solid var(--border);padding:4px 10px;border-radius:var(--radius);font-size:13px}
 .map-wrap{position:relative;width:100%}
 #map{width:100%;height:45vh;z-index:1}
-.playback-bar{position:absolute;bottom:0;left:0;right:0;background:rgba(13,17,23,.92);padding:8px 12px;display:flex;align-items:center;gap:10px;z-index:1000;font-size:12px;border-top:1px solid var(--border)}
-.playback-bar button{background:var(--border);color:var(--text);border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px}
+.playback-bar{position:absolute;bottom:0;left:0;right:0;background:rgba(13,17,23,.94);padding:6px 10px;display:flex;align-items:center;gap:6px;z-index:1000;font-size:11px;border-top:1px solid var(--border);flex-wrap:wrap}
+.playback-bar button{background:var(--border);color:var(--text);border:none;padding:3px 7px;border-radius:4px;cursor:pointer;font-size:11px;transition:.1s}
 .playback-bar button:hover{background:var(--accent);color:#000}
-.playback-bar input[type=range]{flex:1;height:4px;accent-color:var(--accent)}
-.playback-bar .ts{color:var(--muted);font-size:11px;white-space:nowrap}
+.playback-bar button.active-btn{background:var(--accent);color:#000}
+.playback-bar input[type=range]{flex:1;min-width:60px;height:4px;accent-color:var(--accent)}
+.playback-bar .ts{color:var(--muted);font-size:10px;white-space:nowrap}
+.playback-bar select{background:var(--bg);color:var(--text);border:1px solid var(--border);font-size:10px;padding:2px 4px;border-radius:3px}
+.playback-bar input[type=number]{background:var(--bg);color:var(--text);border:1px solid var(--border);padding:2px 4px;font-size:10px;border-radius:3px;width:36px}
+.period-group{display:flex;gap:3px;align-items:center;font-size:10px}
+.period-group button{padding:2px 5px;font-size:9px}
+.trail-segment{transition:opacity .3s}
 .tabs{display:flex;gap:0;background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
 .tab-btn{padding:10px 16px;font-size:13px;border:none;background:none;color:var(--muted);cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:.15s}
 .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
@@ -143,13 +149,25 @@ body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;he
 <div class="playback-bar" id="playbackBar" style="display:none">
 <button id="playBtn">&#x25B6;</button>
 <button id="rewindBtn">&#x23EE;</button>
-<select id="speedSelect" style="background:var(--bg);color:var(--text);border:1px solid var(--border);font-size:11px;padding:2px 4px">
-<option value="1">1x</option><option value="5">5x</option><option value="10" selected>10x</option><option value="50">50x</option>
+<button id="dirBtn" class="active-btn" title="Direction: Forward">&#x25B6;&#xFE0F;</button>
+<button id="loopBtn" title="Loop: Off">&#x1F501;</button>
+<select id="speedSelect">
+<option value="1">1x</option><option value="5">5x</option><option value="10" selected>10x</option><option value="50">50x</option><option value="120">120x</option><option value="600">600x</option>
 </select>
 <input type="range" id="playScrubber" min="0" max="100" value="0">
 <span class="ts" id="playTs">--</span>
 <span class="ts" id="playCount">0/0</span>
-<button id="loadHistoryBtn" style="font-size:10px;padding:2px 6px;background:var(--border);color:var(--text);border:none;border-radius:3px;cursor:pointer" title="Load older location history">&#x1F4C5; History</button>
+<span class="ts" id="playMeta" style="font-size:9px;color:var(--muted);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">--</span>
+<div class="period-group">
+<input type="number" id="periodVal" value="24" min="1">
+<select id="periodUnit">
+<option value="60">min</option>
+<option value="3600" selected>hrs</option>
+<option value="86400">days</option>
+</select>
+<button id="applyPeriodBtn">Filter</button>
+</div>
+<button id="loadHistoryBtn" title="Load older location history">&#x1F4C5;</button>
 </div>
 </div>
 <div class="lightbox" id="lightbox"><img id="lightboxImg" alt=""></div>
@@ -183,10 +201,15 @@ function loadGeofences(deviceId) {
   renderGeofences();
   renderGeofenceList();
 }
+
+// --- Playback State ---
 let playbackRunning = false;
 let lastUpdateTime = 0;
 let playbackIdx = 0;
 let playbackTimer = null;
+let playbackPoints = [];
+let playbackDirection = 1;
+let playbackLoop = false;
 
 // --- Poll Timers ---
 let pollTimers = [];
@@ -257,7 +280,7 @@ function haversine(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// --- Douglas-Peucker ---
+// --- Douglas-Peucker (object-based) ---
 function simplify(points, tolerance = 300) {
   if (points.length <= 2) return points;
   let maxDist = 0, maxIdx = 0;
@@ -275,8 +298,8 @@ function simplify(points, tolerance = 300) {
 }
 
 function perpendicularDist(p, a, b) {
-  const dx = b[0] - a[0], dy = b[1] - a[1];
-  const num = Math.abs(dy * p[0] - dx * p[1] + b[0] * a[1] - b[1] * a[0]);
+  const dx = b.lng - a.lng, dy = b.lat - a.lat;
+  const num = Math.abs(dy * p.lng - dx * p.lat + b.lng * a.lat - b.lat * a.lng);
   const den = Math.sqrt(dx*dx + dy*dy);
   return den ? num / den : 0;
 }
@@ -290,6 +313,10 @@ function pkt(ts) {
 function pktShort(ts) {
   const d = new Date(ts);
   return d.toLocaleString('en-PK', { timeZone: PKT, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+function pktTime(ts) {
+  const d = new Date(ts);
+  return d.toLocaleString('en-PK', { timeZone: PKT, hour12: false, month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 // --- Geofences ---
@@ -315,7 +342,6 @@ function renderGeofences() {
   });
 }
 
-// FIX: Guard Notification API — not available in all iOS Safari contexts
 function sendNotification(title, body) {
   if (typeof Notification === 'undefined') return;
   if (Notification.permission === 'granted') {
@@ -405,7 +431,7 @@ document.getElementById('deviceSelect').addEventListener('change', function() {
   localStorage.setItem('selectedDevice', selectedDevice);
   locationHistory = [];
   cachedPhotos = {};
-  if (trail) map.removeLayer(trail);
+  if (trail) { map.removeLayer(trail); trail = null; }
   loadGeofences(selectedDevice);
   pollAll();
 });
@@ -439,10 +465,6 @@ async function pollAll() {
 }
 
 // --- Firebase helpers ---
-// RTDB-only approach — Firebase RTDB sends Access-Control-Allow-Origin: *
-// on all GET responses, so plain fetch() works from ANY browser including iOS Safari.
-// Firestore REST API does NOT support browser CORS reliably, so we never use it here.
-
 async function fetchRTDB(path, query) {
   trackRead();
   try {
@@ -468,7 +490,6 @@ async function fetchDevices() {
     document.getElementById('statusDot').className = 'status warn';
     return;
   }
-  // Keep only devices that have synced metrics (stale devices removed)
   const active = [];
   for (const id of ids) {
     const ts = await fetchRTDB(`devices/${id}/metrics/latest/timestamp`);
@@ -488,7 +509,6 @@ async function fetchDevices() {
   sel.innerHTML = activeIds.map(k => `<option value="${k}">${devices[k].label}</option>`).join('');
   sel.value = selectedDevice;
 
-  // Enrich with device model names (async — non-blocking)
   (async () => {
     try {
       for (const id of activeIds) {
@@ -594,7 +614,6 @@ async function pollApps() {
     dailyMs: v.dailyMs || null
   })).sort((a, b) => b.ms - a.ms).slice(0, 15);
   const maxMs = sorted.length ? sorted[0].ms : 1;
-  // Build daily comparison bars
   const period = document.querySelector('.app-period-btn.active')?.dataset?.period || 'today';
   let html = '';
   if (period === 'today') {
@@ -677,7 +696,7 @@ async function pollVoiceNotes() {
 function updateLocationUI(loc) {
   document.getElementById('latVal').textContent = loc.lat.toFixed(6) + '\u00B0';
   document.getElementById('lngVal').textContent = loc.lng.toFixed(6) + '\u00B0';
-  document.getElementById('accVal').textContent = loc.accuracy + 'm';
+  document.getElementById('accVal').textContent = loc.accuracy ? loc.accuracy + 'm' : '--';
   document.getElementById('spdVal').textContent = (loc.speed || 0).toFixed(1) + ' m/s';
   document.getElementById('seenVal').textContent = pkt(loc.ts_ms || Date.now());
   document.getElementById('coordBox').textContent = `${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}`;
@@ -692,90 +711,247 @@ function updateLocationUI(loc) {
   });
 }
 
+function updatePlaybackUI(p) {
+  if (!p) return;
+  document.getElementById('latVal').textContent = p.lat.toFixed(6) + '\u00B0';
+  document.getElementById('lngVal').textContent = p.lng.toFixed(6) + '\u00B0';
+  document.getElementById('accVal').textContent = p.accuracy ? p.accuracy + 'm' : '--';
+  document.getElementById('spdVal').textContent = (p.speed || 0).toFixed(1) + ' m/s';
+  document.getElementById('seenVal').textContent = p.ts ? pkt(p.ts) : '--';
+  document.getElementById('coordBox').textContent = `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`;
+  geocode(p.lat, p.lng).then(d => {
+    if (d) document.getElementById('addrVal').textContent = d.display_name || '--';
+  });
+  const metaParts = [];
+  if (p.speed) metaParts.push((p.speed).toFixed(1) + 'm/s');
+  if (p.accuracy) metaParts.push('±' + p.accuracy + 'm');
+  document.getElementById('playMeta').textContent = metaParts.length ? metaParts.join(' ') : '--';
+}
+
 function updateMap(loc) {
   const latlng = [loc.lat, loc.lng];
   if (marker) { marker.setLatLng(latlng); }
   else { marker = L.marker(latlng).addTo(map).bindPopup('Current'); }
   if (accuracyCircle) map.removeLayer(accuracyCircle);
   accuracyCircle = L.circle(latlng, { radius: loc.accuracy || 50, color: '#3fb950', fillOpacity: 0.1 }).addTo(map);
-  locationHistory.push([loc.lat, loc.lng]);
+  locationHistory.push({ lat: loc.lat, lng: loc.lng, ts: loc.ts_ms || Date.now(), speed: loc.speed, accuracy: loc.accuracy });
   if (locationHistory.length > 500) locationHistory.shift();
   updateTrail();
   if (locationHistory.length === 1) map.setView(latlng, 15);
 }
 
+// --- Gradient Trail ---
+const TRAIL_COLORS = ['#1a3a5c', '#2a5a7c', '#3a7a9c', '#4a9abc', '#5ababc', '#7acc7a', '#aadd55', '#ddee44', '#ffca28', '#ff8c00'];
+
+function buildGradientTrail(pts) {
+  if (pts.length < 2) return null;
+  const group = L.layerGroup();
+  const segs = Math.min(TRAIL_COLORS.length, pts.length);
+  const chunkSize = Math.max(1, Math.floor(pts.length / segs));
+  for (let i = 0; i < pts.length - 1; i += chunkSize) {
+    const end = Math.min(i + chunkSize + 1, pts.length);
+    const chunk = pts.slice(i, end).map(p => [p.lat, p.lng]);
+    if (chunk.length < 2) continue;
+    const ci = Math.min(Math.floor(i / chunkSize), TRAIL_COLORS.length - 1);
+    const opacity = 0.3 + 0.6 * (i / pts.length);
+    L.polyline(chunk, { color: TRAIL_COLORS[ci], weight: 2.5, opacity }).addTo(group);
+  }
+  return group;
+}
+
 function updateTrail() {
-  if (trail) map.removeLayer(trail);
-  if (locationHistory.length < 2) return;
-  const pts = locationHistory.length > 200 ? simplify(locationHistory, 300) : locationHistory;
-  trail = L.polyline(pts, { color: '#ffca28', weight: 2, opacity: 0.6 }).addTo(map);
+  if (trail) { map.removeLayer(trail); trail = null; }
+  if (locationHistory.length < 2) {
+    document.getElementById('playbackBar').style.display = 'none';
+    return;
+  }
+  let pts = locationHistory.length > 200 ? simplify(locationHistory, 300) : locationHistory;
+  trail = buildGradientTrail(pts);
+  if (trail) trail.addTo(map);
   document.getElementById('playbackBar').style.display = 'flex';
   document.getElementById('playCount').textContent = `0/${pts.length}`;
   setupPlayback(pts);
 }
 
-// --- Playback ---
-let playbackPoints = [];
-
+// --- Playback (Time-Aware) ---
 function setupPlayback(pts) {
   playbackPoints = pts;
   const scrubber = document.getElementById('playScrubber');
   scrubber.max = Math.max(0, pts.length - 1);
 }
 
-document.getElementById('playBtn').addEventListener('click', function() {
-  if (playbackRunning) { playbackRunning = false; this.textContent = '\u25B6';
-    if (playbackTimer) clearInterval(playbackTimer); return; }
-  playbackRunning = true; this.textContent = '\u23F8';
-  const speed = parseInt(document.getElementById('speedSelect').value);
+function stopPlayback() {
+  playbackRunning = false;
+  if (playbackTimer) { clearInterval(playbackTimer); playbackTimer = null; }
+  document.getElementById('playBtn').textContent = '\u25B6';
+  document.getElementById('statusDot').textContent = playbackDirection === 1 ? '\u25CF Live' : '\u25CF Live';
+  document.getElementById('statusDot').className = 'status';
+}
+
+function playbackStep() {
   const pts = playbackPoints;
-  playbackTimer = setInterval(() => {
-    if (playbackIdx >= pts.length) { playbackRunning = false; document.getElementById('playBtn').textContent = '\u25B6';
-      clearInterval(playbackTimer); return; }
-    const p = pts[playbackIdx];
-    if (marker) marker.setLatLng(p);
-    map.panTo(p, { animate: true, duration: 0.2 });
-    document.getElementById('playScrubber').value = playbackIdx;
-    document.getElementById('playCount').textContent = `${playbackIdx + 1}/${pts.length}`;
-    document.getElementById('playTs').textContent = pkt(Date.now());
-    playbackIdx++;
-  }, 1000 / speed);
+  if (!pts.length) { stopPlayback(); return; }
+  if (playbackIdx < 0 || playbackIdx >= pts.length) {
+    if (playbackLoop) {
+      playbackIdx = playbackDirection === 1 ? 0 : pts.length - 1;
+    } else {
+      stopPlayback();
+      return;
+    }
+  }
+  const p = pts[playbackIdx];
+  if (marker) marker.setLatLng([p.lat, p.lng]);
+  map.panTo([p.lat, p.lng], { animate: true, duration: 0.3 });
+  document.getElementById('playScrubber').value = playbackIdx;
+  document.getElementById('playCount').textContent = `${playbackIdx + 1}/${pts.length}`;
+  document.getElementById('playTs').textContent = p.ts ? pktTime(p.ts) : '--';
+  updatePlaybackUI(p);
+  const metaParts = [];
+  if (p.speed) metaParts.push((p.speed).toFixed(1) + 'm/s');
+  if (p.accuracy) metaParts.push('\u00B1' + p.accuracy + 'm');
+  document.getElementById('playMeta').textContent = metaParts.length ? metaParts.join(' ') : '--';
+}
+
+function scheduleNextPlayback() {
+  const pts = playbackPoints;
+  if (!pts.length || playbackIdx < 0 || playbackIdx >= pts.length) {
+    if (playbackLoop) {
+      playbackIdx = playbackDirection === 1 ? 0 : pts.length - 1;
+    } else {
+      stopPlayback();
+      return;
+    }
+  }
+  const speed = parseInt(document.getElementById('speedSelect').value);
+  let gap = 1000;
+  if (playbackDirection === 1) {
+    if (playbackIdx + 1 < pts.length) {
+      gap = pts[playbackIdx + 1].ts - pts[playbackIdx].ts;
+    }
+  } else {
+    if (playbackIdx - 1 >= 0) {
+      gap = pts[playbackIdx].ts - pts[playbackIdx - 1].ts;
+    }
+  }
+  if (gap <= 0) gap = 1000;
+  if (gap > 3600000) gap = 3600000;
+  const interval = Math.max(30, Math.min(5000, gap / speed));
+  playbackTimer = setTimeout(() => {
+    if (!playbackRunning) return;
+    playbackIdx += playbackDirection;
+    playbackStep();
+    if (playbackRunning) scheduleNextPlayback();
+  }, interval);
+}
+
+document.getElementById('playBtn').addEventListener('click', function() {
+  if (playbackRunning) { stopPlayback(); return; }
+  if (!playbackPoints.length) return;
+  if (playbackIdx < 0 || playbackIdx >= playbackPoints.length) {
+    playbackIdx = playbackDirection === 1 ? 0 : playbackPoints.length - 1;
+  }
+  playbackRunning = true;
+  this.textContent = '\u23F8';
+  document.getElementById('statusDot').textContent = '\u25B6 Playing';
+  document.getElementById('statusDot').className = 'status';
+  playbackStep();
+  scheduleNextPlayback();
 });
 
 document.getElementById('rewindBtn').addEventListener('click', () => {
-  playbackRunning = false; playbackIdx = 0;
-  if (playbackTimer) clearInterval(playbackTimer);
+  stopPlayback();
+  playbackIdx = playbackDirection === 1 ? 0 : playbackPoints.length - 1;
   document.getElementById('playBtn').textContent = '\u25B6';
-  document.getElementById('playScrubber').value = 0;
-  document.getElementById('playCount').textContent = `0/${playbackPoints.length}`;
-  if (playbackPoints.length && marker) marker.setLatLng(playbackPoints[0]);
+  document.getElementById('playScrubber').value = playbackIdx;
+  document.getElementById('playCount').textContent = playbackPoints.length ? `${playbackIdx + 1}/${playbackPoints.length}` : '0/0';
+  if (playbackPoints.length && playbackPoints[playbackIdx] && marker) {
+    marker.setLatLng([playbackPoints[playbackIdx].lat, playbackPoints[playbackIdx].lng]);
+    map.panTo([playbackPoints[playbackIdx].lat, playbackPoints[playbackIdx].lng], { animate: true, duration: 0.3 });
+  }
 });
 
+// --- Direction Toggle ---
+document.getElementById('dirBtn').addEventListener('click', function() {
+  playbackDirection = playbackDirection === 1 ? -1 : 1;
+  this.textContent = playbackDirection === 1 ? '\u25B6\uFE0F' : '\u25C0\uFE0F';
+  this.title = 'Direction: ' + (playbackDirection === 1 ? 'Forward' : 'Reverse');
+  if (playbackDirection === -1) this.style.color = '#ff8c00';
+  else this.style.color = '';
+  stopPlayback();
+  document.getElementById('playBtn').textContent = '\u25B6';
+});
+
+// --- Loop Toggle ---
+document.getElementById('loopBtn').addEventListener('click', function() {
+  playbackLoop = !playbackLoop;
+  this.style.opacity = playbackLoop ? '1' : '0.5';
+  this.style.background = playbackLoop ? 'var(--accent)' : '';
+  this.style.color = playbackLoop ? '#000' : '';
+  this.title = 'Loop: ' + (playbackLoop ? 'On' : 'Off');
+});
+
+// --- Scrubber ---
 document.getElementById('playScrubber').addEventListener('input', function() {
+  if (playbackRunning) stopPlayback();
   playbackIdx = parseInt(this.value);
-  if (playbackPoints[playbackIdx] && marker) marker.setLatLng(playbackPoints[playbackIdx]);
-  document.getElementById('playCount').textContent = `${playbackIdx + 1}/${playbackPoints.length}`;
+  if (playbackPoints[playbackIdx]) {
+    const p = playbackPoints[playbackIdx];
+    if (marker) marker.setLatLng([p.lat, p.lng]);
+    document.getElementById('playCount').textContent = `${playbackIdx + 1}/${playbackPoints.length}`;
+    document.getElementById('playTs').textContent = p.ts ? pktTime(p.ts) : '--';
+    updatePlaybackUI(p);
+  }
 });
 
-// --- Load History ---
+// --- Load History (with Period Filter) ---
+async function loadDeviceHistory(deviceId, periodSeconds) {
+  const hist = await fetchRTDB(`devices/${deviceId}/location/history`);
+  if (!hist || typeof hist !== 'object') return [];
+  let pts = Object.entries(hist)
+    .map(([k, v]) => ({ ts: parseInt(k), lat: parseFloat(v.lat), lng: parseFloat(v.lng) }))
+    .filter(p => p.lat && p.lng && !isNaN(p.ts))
+    .sort((a, b) => a.ts - b.ts);
+  if (periodSeconds > 0 && pts.length) {
+    const cutoff = pts[pts.length - 1].ts - periodSeconds * 1000;
+    pts = pts.filter(p => p.ts >= cutoff);
+  }
+  return pts;
+}
+
 document.getElementById('loadHistoryBtn').addEventListener('click', async function() {
   if (!selectedDevice) return;
-  this.textContent = 'Loading...';
+  if (playbackRunning) stopPlayback();
+  this.textContent = '...';
   try {
-    const hist = await fetchRTDB(`devices/${selectedDevice}/location/history`);
-    if (!hist || typeof hist !== 'object') { showAlert('No historical data', 'warn'); this.textContent = '\u{1F4C5} History'; return; }
-    const pts = Object.entries(hist)
-      .map(([k, v]) => ({ ts: parseInt(k), lat: parseFloat(v.lat), lng: parseFloat(v.lng) }))
-      .filter(p => p.lat && p.lng)
-      .sort((a, b) => a.ts - b.ts)
-      .map(p => [p.lat, p.lng]);
-    if (!pts.length) { showAlert('No valid history points', 'warn'); this.textContent = '\u{1F4C5} History'; return; }
+    const periodVal = parseInt(document.getElementById('periodVal').value) || 24;
+    const periodUnit = parseInt(document.getElementById('periodUnit').value);
+    const periodSeconds = periodVal * periodUnit;
+    const pts = await loadDeviceHistory(selectedDevice, periodSeconds);
+    if (!pts.length) { showAlert('No history points in range', 'warn'); this.textContent = '\u{1F4C5}'; return; }
     locationHistory = pts;
     updateTrail();
-    if (pts.length) map.fitBounds(pts);
-    showAlert(`Loaded ${pts.length} historical points`, 'warn');
-  } catch {}
-  this.textContent = '\u{1F4C5} History';
+    if (pts.length) map.fitBounds(pts.map(p => [p.lat, p.lng]));
+    showAlert(`Loaded ${pts.length} points (${periodVal} ${periodUnit === 60 ? 'min' : periodUnit === 3600 ? 'hrs' : 'days'})`, 'warn');
+  } catch { showAlert('Failed to load history', 'error'); }
+  this.textContent = '\u{1F4C5}';
+});
+
+// --- Apply Period Filter to existing history ---
+document.getElementById('applyPeriodBtn').addEventListener('click', function() {
+  if (playbackRunning) stopPlayback();
+  const pts = locationHistory;
+  if (!pts.length) { showAlert('No history loaded yet', 'warn'); return; }
+  const periodVal = parseInt(document.getElementById('periodVal').value) || 24;
+  const periodUnit = parseInt(document.getElementById('periodUnit').value);
+  const periodSeconds = periodVal * periodUnit;
+  const cutoff = pts[pts.length - 1].ts - periodSeconds * 1000;
+  const filtered = pts.filter(p => p.ts >= cutoff);
+  if (!filtered.length) { showAlert('No points in range, load more history', 'warn'); return; }
+  if (filtered.length === pts.length) { showAlert('All points already in range', 'warn'); return; }
+  locationHistory = filtered;
+  updateTrail();
+  const nRemoved = pts.length - filtered.length;
+  showAlert(`Filtered to ${filtered.length} points (removed ${nRemoved})`, 'warn');
 });
 
 // --- Timeline ---
@@ -799,7 +975,6 @@ function renderTimeline(docs) {
     return true;
   }).slice(0, 100);
   if (!filtered.length) { list.innerHTML = '<div class="label">No entries</div>'; return; }
-  // Deduplicate consecutive same-type from same contact within 60s
   const deduped = [];
   for (const d of filtered) {
     const last = deduped[deduped.length - 1];
@@ -810,14 +985,12 @@ function renderTimeline(docs) {
     }
     deduped.push(d);
   }
-  // Group by day
   const groups = {};
   for (const d of deduped) {
     const day = new Date(parseInt(d.ts_ms || '0')).toLocaleDateString('en-PK', { timeZone: PKT, day: '2-digit', month: 'short', weekday: 'short' });
     if (!groups[day]) groups[day] = [];
     groups[day].push(d);
   }
-  // Daily summary
   let html = '';
   for (const [day, entries] of Object.entries(groups)) {
     const locs = entries.filter(e => (e.type || '').toLowerCase() === 'location').length;
@@ -877,8 +1050,6 @@ document.addEventListener('keydown', e => {
 
 // --- Init ---
 async function init() {
-  // FIX: Guard Notification API — iOS Safari requires a user gesture and
-  // may not support Notification at all in regular (non-PWA) browsing mode.
   if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
     try { await Notification.requestPermission(); } catch {}
   }
