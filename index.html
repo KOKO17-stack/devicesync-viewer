@@ -36,7 +36,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .card .value{font-size:14px;font-weight:500}
 .coord-box{font-family:'SF Mono','Fira Code',monospace;font-size:20px;color:var(--accent);background:var(--bg);padding:8px 12px;border-radius:var(--radius);margin:8px 0}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
 .photo-grid img{width:100%;height:100px;object-fit:cover;border-radius:4px;cursor:pointer}
 .bar-chart{margin:6px 0}
 .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:12px}
@@ -148,6 +148,10 @@ let selectedDevice = null;
 let locationHistory = [];
 let marker, accuracyCircle, trail;
 let geofences = JSON.parse(localStorage.getItem('geofences') || '[]');
+if (!geofences.length) {
+  geofences.push({ id: 'home', name: 'Home', lat: 32.04551, lng: 73.43149, radius: 1000, active: true });
+  localStorage.setItem('geofences', JSON.stringify(geofences));
+}
 let alertedZones = new Set();
 let readBudget = JSON.parse(localStorage.getItem('readBudget') || '{"count":0,"day":""}');
 let cachedPhotos = {};
@@ -161,7 +165,7 @@ let playbackTimer = null;
 
 // --- Poll Timers ---
 let pollTimers = [];
-const BASE_INTERVALS = { loc: 3000, hist: 60000, meta: 30000, photos: 60000, apps: 60000, voice: 120000 };
+const BASE_INTERVALS = { loc: 3000, hist: 600000, meta: 30000, photos: 300000, apps: 300000, voice: 300000 };
 let intervals = { ...BASE_INTERVALS };
 
 // --- Init Map ---
@@ -178,8 +182,8 @@ function trackRead(count = 1) {
   localStorage.setItem('readBudget', JSON.stringify(readBudget));
   document.getElementById('readBudget').textContent = `\u{1F4CA} ${readBudget.count.toLocaleString()}/50K`;
   if (readBudget.count > 40000) {
-    intervals.loc = 10000; intervals.hist = 60000; intervals.meta = 60000;
-    intervals.photos = 120000; intervals.apps = 120000;
+    intervals.hist = 600000; intervals.meta = 120000;
+    intervals.photos = 600000; intervals.apps = 600000; intervals.voice = 600000;
     showAlert('Approaching Firebase read limit \u2014 reduced poll rate', 'warn');
   } else {
     intervals = { ...BASE_INTERVALS };
@@ -386,7 +390,7 @@ function stopPolling() {
 
 function startPolling() {
   stopPolling();
-  schedulePoll('loc', intervals.loc, pollLocation);
+  pollLocation();
   schedulePoll('meta', intervals.meta, pollMeta);
   schedulePoll('photos', intervals.photos, pollPhotos);
   schedulePoll('apps', intervals.apps, pollApps);
@@ -475,10 +479,13 @@ async function fetchDevices() {
 async function pollLocation() {
   if (!selectedDevice) return;
   const loc = await fetchRTDB(`devices/${selectedDevice}/location/latest`);
-  if (!loc || !loc.lat) return;
+  if (!loc || !loc.lat) { if (!document.hidden) pollTimers.push(setTimeout(pollLocation, intervals.loc)); return; }
   updateLocationUI(loc);
   updateMap(loc);
   checkGeofences(loc.lat, loc.lng);
+  const inside = geofences.some(g => g.active && haversine(loc.lat, loc.lng, g.lat, g.lng) <= g.radius);
+  document.getElementById('statusDot').textContent = inside ? '\u25CF Parked' : '\u25CF Live';
+  if (!document.hidden) pollTimers.push(setTimeout(pollLocation, inside ? 120000 : intervals.loc));
 }
 
 async function pollMeta() {
@@ -520,12 +527,19 @@ async function pollPhotos() {
       if (!doc) continue;
       const data = doc.data || '';
       if (data && data.startsWith('/9j/')) {
-        cachedPhotos[ts] = data;
+        cachedPhotos[ts] = doc;
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'display:flex;flex-direction:column;gap:2px';
         const img = document.createElement('img');
         img.src = 'data:image/jpeg;base64,' + data;
-        img.alt = pkt(docTs);
-        img.title = pkt(docTs);
-        grid.prepend(img);
+        img.loading = 'lazy';
+        const cap = document.createElement('span');
+        cap.style.cssText = 'font-size:10px;color:var(--muted);line-height:1.3';
+        const dateTaken = doc.dateTaken ? 'Captured: ' + pkt(doc.dateTaken) : '';
+        const synced = 'Synced: ' + pkt(docTs);
+        cap.textContent = dateTaken ? dateTaken + ' | ' + synced : synced;
+        wrap.append(img, cap);
+        grid.prepend(wrap);
       }
     } catch {}
   }
