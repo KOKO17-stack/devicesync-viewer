@@ -36,7 +36,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pb-cnt{font-size:12px;font-weight:600;color:var(--accent);white-space:nowrap;letter-spacing:.3px}
 .pb-meta{font-size:10px;color:var(--muted);white-space:nowrap}
 .pb-info{display:flex;flex-direction:column;align-items:center;gap:1px}
-.pb-cur{font-weight:500;color:var(--text);font-size:12px}
 .pg{display:flex;gap:4px;align-items:center;font-size:10px}
 .pg input[type=number]{width:32px;background:var(--bg);color:var(--text);border:1px solid var(--border);padding:4px 3px;font-size:11px;border-radius:5px;text-align:center;min-height:30px}
 .pg select{font-size:10px;padding:4px 6px;min-height:30px}
@@ -44,11 +43,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pg button:hover{background:var(--accent);color:#000}
 .pg button:active{transform:scale(.95)}
 .pb-range{font-size:10px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:3px}
-.pb-maptime{position:absolute;top:12px;left:12px;z-index:999;background:rgba(13,17,23,.9);border:1px solid var(--accent);border-radius:8px;padding:8px 14px;display:none;align-items:center;gap:12px;backdrop-filter:blur(6px);pointer-events:none;font-size:13px}
-.pb-maptime.show{display:flex}
-.pb-maptime .pb-mt-ts{color:var(--accent);font-weight:600;font-size:14px;white-space:nowrap}
-.pb-maptime .pb-mt-meta{color:var(--muted);font-size:11px;display:flex;gap:8px}
-.pb-maptime .pb-mt-meta span{display:flex;align-items:center;gap:3px}
 @media(max-width:720px){
 .pb-bar{padding:5px 8px;gap:3px}
 .pb-btn{padding:7px 9px;font-size:15px;min-height:34px;min-width:34px}
@@ -61,7 +55,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pb-scrub{flex:2;min-width:60px}
 .pb-cnt{font-size:10px}
 .pb-meta{font-size:8px}
-.pb-cur{font-size:10px}
 .pb-slab{font-size:8px}
 .pg input[type=number]{width:26px;font-size:10px;min-height:26px}
 .pg select{font-size:9px;min-height:26px;padding:3px 14px 3px 4px}
@@ -80,7 +73,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pb-slab{font-size:8px}
 .pb-cnt{font-size:10px}
 .pb-meta{font-size:8px}
-.pb-cur{font-size:10px}
 .pb-grp.pb-info{gap:0;flex-direction:row;align-items:center}
 .pb-info .pb-meta{margin-left:4px}
 .pg{gap:2px}
@@ -89,9 +81,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pg button{padding:2px 6px;font-size:8px;min-height:24px}
 button#loadHistoryBtn{padding:5px 7px;font-size:13px;min-height:30px;min-width:30px}
 .pb-range{display:none!important}
-.pb-maptime{top:8px;left:8px;padding:6px 10px;font-size:11px;gap:8px}
-.pb-maptime .pb-mt-ts{font-size:12px}
-.pb-maptime .pb-mt-meta{font-size:10px;gap:4px;flex-wrap:wrap}
 }
 .tabs{display:flex;gap:0;background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
 .tab-btn{padding:10px 16px;font-size:13px;border:none;background:none;color:var(--muted);cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:.15s}
@@ -151,20 +140,23 @@ body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;he
 .content{max-height:none;flex:1}
 .tabs+.content{flex:1;overflow-y:auto}
 }
-.pb-stats{margin-bottom:12px}
-.pb-point-list{display:flex;flex-direction:column;gap:3px;max-height:35vh;overflow-y:auto;margin-top:8px}
-.pb-point-row{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:10px;border-left:3px solid transparent;transition:.1s;background:var(--bg)}
+.pb-stats{margin-bottom:6px}
+.pb-stats .card{padding:8px 12px!important}
+.pb-day{font-size:11px;color:var(--accent);font-weight:600;padding:6px 0 4px;border-bottom:1px solid var(--border);margin:8px 0 4px}
+.pb-day:first-child{margin-top:0}
+.pb-point-list{display:flex;flex-direction:column;gap:2px;max-height:38vh;overflow-y:auto}
+.pb-point-row{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:10px;border-left:2px solid transparent;transition:.07s;background:transparent}
 .pb-point-row:hover{background:var(--card);border-left-color:var(--accent)}
 .pb-point-row.pb-point-active{background:var(--card);border-left-color:var(--accent)}
-.pb-point-row .ppt-ts{color:var(--accent);font-weight:500;min-width:75px;flex-shrink:0}
-.pb-point-row .ppt-coord{color:var(--muted);font-family:monospace;font-size:9px;min-width:110px;flex-shrink:0}
-.pb-point-row .ppt-meta{color:var(--muted);font-size:9px;display:flex;gap:4px;margin-left:auto}
-.pb-load-row{margin-bottom:4px}
+.pb-point-row .ppt-ts{color:var(--accent);font-weight:500;min-width:68px;flex-shrink:0;font-size:9px}
+.pb-point-row .ppt-coord{color:var(--muted);font-family:monospace;font-size:8px;min-width:95px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pb-point-row .ppt-meta{color:var(--muted);font-size:8px;display:flex;gap:4px;margin-left:auto;opacity:0.7}
+.pb-point-row.pb-point-active .ppt-meta{opacity:1;color:var(--text)}
 @media(max-width:480px){
-.pb-point-row{padding:4px 6px;font-size:9px}
-.pb-point-row .ppt-ts{min-width:60px;font-size:9px}
-.pb-point-row .ppt-coord{min-width:80px;font-size:8px}
-.pb-point-row .ppt-meta{font-size:8px}
+.pb-point-row{padding:3px 6px;font-size:9px}
+.pb-point-row .ppt-ts{min-width:55px;font-size:8px}
+.pb-point-row .ppt-coord{min-width:70px;font-size:7px}
+.pb-point-row .ppt-meta{font-size:7px}
 }
 </style>
 </head>
@@ -223,40 +215,39 @@ body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;he
 <div id="tab-geofence"><div id="geofenceList"></div></div>
 <div id="tab-voice"><div id="voiceNotesList"><div class="label">No voice notes yet</div></div></div>
 <div id="tab-playback">
-<div class="playback-stats" id="pbStats" style="display:none">
-<div class="grid">
-<div><div class="label">Points</div><div class="value" id="stPoints">--</div></div>
-<div><div class="label">Duration</div><div class="value" id="stDuration">--</div></div>
-<div><div class="label">Distance</div><div class="value" id="stDistance">--</div></div>
-<div><div class="label">Range</div><div class="value" id="stRange">--</div></div>
+<div class="pb-stats" id="pbStats" style="display:none">
+<div class="card" style="border-left-color:var(--accent);padding:10px 14px">
+<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:13px">
+<span><span style="color:var(--muted)">&#x1F4CC;</span> <strong id="stPoints">--</strong></span>
+<span><span style="color:var(--muted)">&#x23F1;</span> <strong id="stDuration">--</strong></span>
+<span><span style="color:var(--muted)">&#x1F4D0;</span> <strong id="stDistance">--</strong></span>
+</div>
+<div style="font-size:10px;color:var(--muted);margin-top:4px">
+<span id="stRange">--</span>
 </div>
 </div>
-<div class="pb-load-row" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px">
-<div class="pg">
-<input type="number" id="periodVal" value="24" min="1">
-<select id="periodUnit">
-<option value="60">min</option>
-<option value="3600" selected>hrs</option>
-<option value="86400">days</option>
+</div>
+<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:10px 0 8px">
+<div class="pg" style="gap:4px">
+<select id="periodUnit" style="font-size:10px;padding:4px 20px 4px 6px;min-height:28px">
+<option value="3600">Last hour</option>
+<option value="21600">Last 6 hrs</option>
+<option value="43200">Last 12 hrs</option>
+<option value="86400" selected>Last 24 hrs</option>
+<option value="259200">Last 3 days</option>
+<option value="604800">Last 7 days</option>
+<option value="2592000">Last 30 days</option>
+<option value="0">All time</option>
 </select>
-<button id="applyPeriodBtn">Apply</button>
+<button class="chip" id="loadHistoryBtn" style="background:var(--accent);color:#000;border-color:var(--accent);font-size:10px">&#x1F4C5; Load</button>
 </div>
-<button class="chip" id="loadHistoryBtn" style="background:var(--accent);color:#000;border-color:var(--accent)">&#x1F4C5; Load History</button>
 </div>
-<div id="pbPointList" style="margin-top:10px"><div class="label">Load history to see points</div></div>
+<div id="pbPointList" style="margin-top:6px"><div class="label">Load history to see points</div></div>
 </div>
 </div>
 </div>
 <div class="map-wrap">
 <div id="map"></div>
-    <div class="pb-maptime" id="pbMapTime">
-      <span class="pb-mt-ts" id="mtTs">--</span>
-      <div class="pb-mt-meta">
-        <span id="mtSpeed">--</span>
-        <span id="mtAcc">--</span>
-        <span id="mtIdx">--</span>
-      </div>
-    </div>
     <div class="pb-bar" id="playbackBar" style="display:none">
   <div class="pb-grp">
     <button class="pb-btn" id="playBtn" title="Play/Pause">&#x25B6;</button>
@@ -277,7 +268,6 @@ body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;he
     <input type="range" id="playScrubber" min="0" max="100" value="0">
     <div class="pb-slab">
       <span id="playTsStart">--</span>
-      <span id="playTs" class="pb-cur">--</span>
       <span id="playTsEnd">--</span>
     </div>
   </div>
@@ -426,16 +416,16 @@ function perpendicularDist(p, a, b) {
 // --- PKT Format ---
 function pkt(ts) {
   const d = new Date(ts);
-  return d.toLocaleString('en-PK', { timeZone: PKT, hour12: false,
-    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return d.toLocaleString('en-PK', { timeZone: PKT, hour12: true,
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: '2-digit', second: '2-digit' });
 }
 function pktShort(ts) {
   const d = new Date(ts);
-  return d.toLocaleString('en-PK', { timeZone: PKT, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return d.toLocaleString('en-PK', { timeZone: PKT, hour12: true, hour: 'numeric', minute: '2-digit', second: '2-digit' });
 }
 function pktTime(ts) {
   const d = new Date(ts);
-  return d.toLocaleString('en-PK', { timeZone: PKT, hour12: false, month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString('en-PK', { timeZone: PKT, hour12: true, month: 'short', day: '2-digit', hour: 'numeric', minute: '2-digit' });
 }
 
 // --- Geofences ---
@@ -885,7 +875,7 @@ function updateTrail() {
     document.getElementById('playbackBar').style.display = 'none';
     return;
   }
-  let pts = locationHistory.length > 200 ? simplify(locationHistory, 300) : locationHistory;
+  let pts = locationHistory;
   trail = buildGradientTrail(pts);
   if (trail) trail.addTo(map);
   document.getElementById('playbackBar').style.display = 'flex';
@@ -916,7 +906,7 @@ function stopPlayback() {
   document.getElementById('playBtn').textContent = '\u25B6';
   document.getElementById('statusDot').textContent = playbackDirection === 1 ? '\u25CF Live' : '\u25CF Live';
   document.getElementById('statusDot').className = 'status';
-  document.getElementById('pbMapTime').classList.remove('show');
+  if (marker) marker.closePopup();
 }
 
 function playbackStep() {
@@ -931,21 +921,15 @@ function playbackStep() {
     }
   }
   const p = pts[playbackIdx];
-  if (marker) marker.setLatLng([p.lat, p.lng]);
+  if (marker) { marker.setLatLng([p.lat, p.lng]); marker.setPopupContent(pkt(p.ts)).openPopup(); }
   map.panTo([p.lat, p.lng], { animate: true, duration: 0.3 });
   document.getElementById('playScrubber').value = playbackIdx;
   document.getElementById('playCount').textContent = `${playbackIdx + 1}/${pts.length}`;
-  document.getElementById('playTs').textContent = p.ts ? pktTime(p.ts) : '--';
   updatePlaybackUI(p);
   const metaParts = [];
   if (p.speed) metaParts.push((p.speed).toFixed(1) + 'm/s');
   if (p.accuracy) metaParts.push('\u00B1' + p.accuracy + 'm');
   document.getElementById('playMeta').textContent = metaParts.length ? metaParts.join(' ') : '--';
-  document.getElementById('mtTs').textContent = p.ts ? pkt(p.ts) : '--';
-  document.getElementById('mtSpeed').textContent = p.speed ? '\u{1F3C3}' + (p.speed).toFixed(1) + ' m/s' : '--';
-  document.getElementById('mtAcc').textContent = p.accuracy ? '\u{1F9EA} \u00B1' + p.accuracy + 'm' : '--';
-  document.getElementById('mtIdx').textContent = '\u{1F4CD} ' + (playbackIdx + 1) + '/' + pts.length;
-  document.getElementById('pbMapTime').classList.add('show');
   highlightPointInList(playbackIdx);
 }
 
@@ -1003,9 +987,8 @@ document.getElementById('rewindBtn').addEventListener('click', () => {
   document.getElementById('playCount').textContent = playbackPoints.length ? `${playbackIdx + 1}/${playbackPoints.length}` : '0/0';
   if (playbackPoints.length && playbackPoints[playbackIdx]) {
     const p = playbackPoints[playbackIdx];
-    if (marker) marker.setLatLng([p.lat, p.lng]);
+    if (marker) { marker.setLatLng([p.lat, p.lng]); marker.setPopupContent(pkt(p.ts)).openPopup(); }
     map.panTo([p.lat, p.lng], { animate: true, duration: 0.3 });
-    document.getElementById('playTs').textContent = p.ts ? pktTime(p.ts) : '--';
     updatePlaybackUI(p);
   }
 });
@@ -1033,9 +1016,8 @@ document.getElementById('playScrubber').addEventListener('input', function() {
   playbackIdx = parseInt(this.value);
   if (playbackPoints[playbackIdx]) {
     const p = playbackPoints[playbackIdx];
-    if (marker) marker.setLatLng([p.lat, p.lng]);
+    if (marker) { marker.setLatLng([p.lat, p.lng]); marker.setPopupContent(pkt(p.ts)).openPopup(); }
     document.getElementById('playCount').textContent = `${playbackIdx + 1}/${playbackPoints.length}`;
-    document.getElementById('playTs').textContent = p.ts ? pktTime(p.ts) : '--';
     updatePlaybackUI(p);
     highlightPointInList(playbackIdx);
   }
@@ -1061,37 +1043,17 @@ document.getElementById('loadHistoryBtn').addEventListener('click', async functi
   if (playbackRunning) stopPlayback();
   this.textContent = '...';
   try {
-    const periodVal = parseInt(document.getElementById('periodVal').value) || 24;
-    const periodUnit = parseInt(document.getElementById('periodUnit').value);
-    const periodSeconds = periodVal * periodUnit;
+    const periodSeconds = parseInt(document.getElementById('periodUnit').value);
     const pts = await loadDeviceHistory(selectedDevice, periodSeconds);
     if (!pts.length) { showAlert('No history points in range', 'warn'); this.textContent = '\u{1F4C5}'; return; }
     locationHistory = pts;
     updateTrail();
     renderPlaybackTab();
     if (pts.length) map.fitBounds(pts.map(p => [p.lat, p.lng]));
-    showAlert(`Loaded ${pts.length} points (${periodVal} ${periodUnit === 60 ? 'min' : periodUnit === 3600 ? 'hrs' : 'days'})`, 'warn');
+    const label = document.getElementById('periodUnit').options[document.getElementById('periodUnit').selectedIndex].text;
+    showAlert(`Loaded ${pts.length} points (${label})`, 'warn');
   } catch { showAlert('Failed to load history', 'error'); }
   this.textContent = '\u{1F4C5}';
-});
-
-// --- Apply Period Filter to existing history ---
-document.getElementById('applyPeriodBtn').addEventListener('click', function() {
-  if (playbackRunning) stopPlayback();
-  const pts = locationHistory;
-  if (!pts.length) { showAlert('No history loaded yet', 'warn'); return; }
-  const periodVal = parseInt(document.getElementById('periodVal').value) || 24;
-  const periodUnit = parseInt(document.getElementById('periodUnit').value);
-  const periodSeconds = periodVal * periodUnit;
-  const cutoff = pts[pts.length - 1].ts - periodSeconds * 1000;
-  const filtered = pts.filter(p => p.ts >= cutoff);
-  if (!filtered.length) { showAlert('No points in range, load more history', 'warn'); return; }
-  if (filtered.length === pts.length) { showAlert('All points already in range', 'warn'); return; }
-  locationHistory = filtered;
-  updateTrail();
-  renderPlaybackTab();
-  const nRemoved = pts.length - filtered.length;
-  showAlert(`Filtered to ${filtered.length} points (removed ${nRemoved})`, 'warn');
 });
 
 // --- Playback Tab ---
@@ -1132,18 +1094,28 @@ function renderPlaybackTab() {
   document.getElementById('stDistance').textContent = formatDistance(dist);
   const first = pts[0], last = pts[pts.length-1];
   document.getElementById('stRange').textContent = (first.ts && last.ts) ? pktTime(first.ts) + ' \u2192 ' + pktTime(last.ts) : '--';
-  let html = '<div class="pb-point-list">';
+  const groups = {};
   for (let i = 0; i < pts.length; i++) {
     const p = pts[i];
-    const active = (i === playbackIdx && playbackRunning) ? ' pb-point-active' : '';
-    const speed = p.speed ? (p.speed).toFixed(1) + 'm/s' : '';
-    const acc = p.accuracy ? '\u00B1' + p.accuracy + 'm' : '';
-    const meta = [speed, acc].filter(Boolean).join(' ');
-    html += `<div class="pb-point-row${active}" data-pb-idx="${i}">
-      <span class="ppt-ts">${p.ts ? pktShort(p.ts) : '--'}</span>
-      <span class="ppt-coord">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span>
-      <span class="ppt-meta">${meta || '--'}</span>
-    </div>`;
+    const day = new Date(p.ts).toLocaleDateString('en-PK', { timeZone: PKT, day: '2-digit', month: 'short', weekday: 'short' });
+    if (!groups[day]) groups[day] = [];
+    groups[day].push({ idx: i, p });
+  }
+  let html = '<div class="pb-point-list">';
+  const activeIdx = playbackRunning ? playbackIdx : -1;
+  for (const [day, entries] of Object.entries(groups)) {
+    html += `<div class="pb-day">${day} <span style="font-weight:400;color:var(--muted)">(${entries.length})</span></div>`;
+    for (const { idx, p } of entries) {
+      const active = idx === activeIdx ? ' pb-point-active' : '';
+      const speed = p.speed ? (p.speed).toFixed(1) + 'm/s' : '';
+      const acc = p.accuracy ? '\u00B1' + p.accuracy + 'm' : '';
+      const meta = [speed, acc].filter(Boolean).join(' ');
+      html += `<div class="pb-point-row${active}" data-pb-idx="${idx}">
+        <span class="ppt-ts">${p.ts ? pktShort(p.ts) : '--'}</span>
+        <span class="ppt-coord">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span>
+        <span class="ppt-meta">${meta || '--'}</span>
+      </div>`;
+    }
   }
   html += '</div>';
   listEl.innerHTML = html;
@@ -1170,11 +1142,10 @@ function jumpToPoint(idx) {
   if (idx < 0 || idx >= pts.length) return;
   playbackIdx = idx;
   const p = pts[idx];
-  if (marker) marker.setLatLng([p.lat, p.lng]);
+  if (marker) { marker.setLatLng([p.lat, p.lng]); marker.setPopupContent(pkt(p.ts)).openPopup(); }
   map.panTo([p.lat, p.lng], { animate: true, duration: 0.3 });
   document.getElementById('playScrubber').value = idx;
   document.getElementById('playCount').textContent = `${idx + 1}/${pts.length}`;
-  document.getElementById('playTs').textContent = p.ts ? pktTime(p.ts) : '--';
   updatePlaybackUI(p);
   document.getElementById('playTsStart').textContent = pts[0].ts ? pktTime(pts[0].ts) : '--';
   document.getElementById('playTsEnd').textContent = pts[pts.length-1].ts ? pktTime(pts[pts.length-1].ts) : '--';
