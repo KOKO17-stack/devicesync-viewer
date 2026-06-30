@@ -211,7 +211,7 @@ body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;he
 <span class="app-period-btn active" data-period="today">Today</span>
 <span class="app-period-btn" data-period="yesterday">Yesterday</span>
 <span class="app-period-btn" data-period="week">7-day avg</span>
-</div><div id="appsChart"></div></div>
+ </div><div style="font-size:10px;color:var(--muted);margin-bottom:6px" id="appsSyncInfo"></div><div id="appsChart"></div></div>
 <div id="tab-geofence"><div id="geofenceList"></div></div>
 <div id="tab-voice"><div id="voiceNotesList"><div class="label">No voice notes yet</div></div></div>
 <div id="tab-playback">
@@ -296,6 +296,7 @@ let alertedZones = new Set();
 let readBudget = JSON.parse(localStorage.getItem('readBudget') || '{"count":0,"day":""}');
 let cachedPhotos = {};
 let appsCache = null;
+let appsLastSync = 0;
 let cachedAddresses = JSON.parse(localStorage.getItem('geoCache') || '{}');
 let nomQueue = [];
 let nomProcessing = false;
@@ -705,7 +706,13 @@ async function pollPhotos() {
 
 function renderApps(sorted) {
   const chart = document.getElementById('appsChart');
-  if (!sorted || !sorted.length) { chart.innerHTML = '<div class="label">No app usage data yet</div>'; return; }
+  const syncEl = document.getElementById('appsSyncInfo');
+  if (!sorted || !sorted.length) {
+    chart.innerHTML = '<div class="label">No app usage data yet</div>';
+    if (syncEl) syncEl.textContent = '';
+    return;
+  }
+  if (syncEl) syncEl.textContent = appsLastSync ? '\u{1F504} ' + pktShort(appsLastSync) : '';
   const maxMs = sorted[0].ms || 1;
   const period = document.querySelector('.app-period-btn.active')?.dataset?.period || 'today';
   let html = '';
@@ -714,7 +721,7 @@ function renderApps(sorted) {
       <div class="bar-row">
         <span class="bar-label">${a.name}</span>
         <div class="bar-fill" style="width:${(a.ms/maxMs*100).toFixed(0)}%"></div>
-        <span class="bar-val">${(a.ms/60000).toFixed(1)}m</span>
+        <span class="bar-val">${(a.ms/3600000).toFixed(1)}h</span>
       </div>`).join('');
   } else if (period === 'yesterday') {
     if (!sorted[0]?.dailyMs) {
@@ -725,7 +732,7 @@ function renderApps(sorted) {
       <div class="bar-row">
         <span class="bar-label">${a.name}</span>
         <div class="bar-fill" style="width:${((a.dailyMs?.yesterday||0)/yMax*100).toFixed(0)}%"></div>
-        <span class="bar-val">${((a.dailyMs?.yesterday||0)/60000).toFixed(1)}m</span>
+        <span class="bar-val">${((a.dailyMs?.yesterday||0)/3600000).toFixed(1)}h</span>
       </div>`).join('');
   } else if (period === 'week') {
     if (!sorted[0]?.dailyMs) {
@@ -736,7 +743,7 @@ function renderApps(sorted) {
       <div class="bar-row">
         <span class="bar-label">${a.name}</span>
         <div class="bar-fill" style="width:${((a.dailyMs?.weekAvg||0)/wMax*100).toFixed(0)}%"></div>
-        <span class="bar-val">${((a.dailyMs?.weekAvg||0)/60000).toFixed(1)}m</span>
+        <span class="bar-val">${((a.dailyMs?.weekAvg||0)/3600000).toFixed(1)}h</span>
       </div>`).join('');
   }
   chart.innerHTML = html || '<div class="label">No app usage data for this period</div>';
@@ -755,6 +762,7 @@ async function pollApps() {
     ms: parseInt(v.totalForegroundMs || '0'),
     dailyMs: v.dailyMs || null
   })).sort((a, b) => b.ms - a.ms).slice(0, 15);
+  appsLastSync = Date.now();
   renderApps(appsCache);
 }
 
