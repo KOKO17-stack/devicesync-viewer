@@ -297,6 +297,7 @@ let readBudget = JSON.parse(localStorage.getItem('readBudget') || '{"count":0,"d
 let cachedPhotos = {};
 let appsCache = null;
 let appsLastSync = 0;
+let appsPhoneSync = 0;
 let cachedAddresses = JSON.parse(localStorage.getItem('geoCache') || '{}');
 let nomQueue = [];
 let nomProcessing = false;
@@ -712,7 +713,13 @@ function renderApps(sorted) {
     if (syncEl) syncEl.textContent = '';
     return;
   }
-  if (syncEl) syncEl.textContent = appsLastSync ? '\u{1F504} ' + pktShort(appsLastSync) : '';
+  if (syncEl) {
+    let t = '';
+    if (appsPhoneSync) t += '\u{1F4F1} ' + pktShort(appsPhoneSync);
+    if (appsPhoneSync && appsLastSync) t += ' | ';
+    if (appsLastSync) t += '\u{1F504} ' + pktShort(appsLastSync);
+    syncEl.textContent = t;
+  }
   const maxMs = sorted[0].ms || 1;
   const period = document.querySelector('.app-period-btn.active')?.dataset?.period || 'today';
   let html = '';
@@ -763,6 +770,7 @@ async function pollApps() {
     dailyMs: v.dailyMs || null
   })).sort((a, b) => b.ms - a.ms).slice(0, 15);
   appsLastSync = Date.now();
+  try { const info = await fetchRTDB(`devices/${selectedDevice}/info`); if (info) appsPhoneSync = parseInt(info.lastSyncMs || '0'); } catch {}
   renderApps(appsCache);
 }
 
