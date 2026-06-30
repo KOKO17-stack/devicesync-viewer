@@ -36,8 +36,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .card .value{font-size:14px;font-weight:500}
 .coord-box{font-family:'SF Mono','Fira Code',monospace;font-size:20px;color:var(--accent);background:var(--bg);padding:8px 12px;border-radius:var(--radius);margin:8px 0}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
-.photo-grid img{width:100%;height:100px;object-fit:cover;border-radius:4px;cursor:pointer}
+.photo-feed{display:flex;flex-direction:column;gap:14px}
+.photo-feed .pwrap{background:var(--card);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)}
+.photo-feed img{width:100%;height:auto;max-height:60vh;object-fit:contain;cursor:pointer;background:#000}
+.photo-feed .pcap{padding:8px 10px;font-size:12px;color:var(--text);display:flex;flex-direction:column;gap:2px}
+.photo-feed .pcap .ptime{color:var(--muted);font-size:11px}
 .bar-chart{margin:6px 0}
 .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:12px}
 .bar-fill{height:18px;background:var(--accent);border-radius:3px;min-width:2px}
@@ -106,7 +109,7 @@ body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;he
 <div class="label">Address</div>
 <div class="value" id="addrVal" style="font-size:13px;color:var(--muted)">--</div>
 </div>
-<div id="tab-photos"><div class="photo-grid" id="photoGrid"><div class="label">No photos yet</div></div></div>
+<div id="tab-photos"><div class="photo-feed" id="photoGrid"><div class="label">No photos yet</div></div></div>
 <div id="tab-timeline">
 <div class="filter-chips" id="timelineChips">
 <span class="chip active" data-filter="all">All</span>
@@ -347,7 +350,7 @@ map.on('contextmenu', e => addGeofence(e.latlng.lat, e.latlng.lng));
 
 // --- Photo Lightbox ---
 document.addEventListener('click', e => {
-  const img = e.target.closest('.photo-grid img');
+  const img = e.target.closest('.photo-feed img');
   if (img) {
     document.getElementById('lightboxImg').src = img.src;
     document.getElementById('lightbox').classList.add('open');
@@ -529,15 +532,21 @@ async function pollPhotos() {
       if (data && data.startsWith('/9j/')) {
         cachedPhotos[ts] = doc;
         const wrap = document.createElement('div');
-        wrap.style.cssText = 'display:flex;flex-direction:column;gap:2px';
+        wrap.className = 'pwrap';
         const img = document.createElement('img');
         img.src = 'data:image/jpeg;base64,' + data;
         img.loading = 'lazy';
-        const cap = document.createElement('span');
-        cap.style.cssText = 'font-size:10px;color:var(--muted);line-height:1.3';
+        const cap = document.createElement('div');
+        cap.className = 'pcap';
         const dateTaken = doc.dateTaken ? 'Captured: ' + pkt(doc.dateTaken) : '';
         const synced = 'Synced: ' + pkt(docTs);
-        cap.textContent = dateTaken ? dateTaken + ' | ' + synced : synced;
+        const name = doc.fileName ? doc.fileName : '';
+        const line1 = document.createElement('div');
+        line1.textContent = name ? name : (dateTaken || synced);
+        const line2 = document.createElement('div');
+        line2.className = 'ptime';
+        line2.textContent = dateTaken ? dateTaken + ' | ' + synced : synced;
+        cap.append(line1, line2);
         wrap.append(img, cap);
         grid.prepend(wrap);
       }
