@@ -295,6 +295,7 @@ let geofences = [];
 let alertedZones = new Set();
 let readBudget = JSON.parse(localStorage.getItem('readBudget') || '{"count":0,"day":""}');
 let cachedPhotos = {};
+let appsCache = null;
 let cachedAddresses = JSON.parse(localStorage.getItem('geoCache') || '{}');
 let nomQueue = [];
 let nomProcessing = false;
@@ -412,6 +413,8 @@ function perpendicularDist(p, a, b) {
   const den = Math.sqrt(dx*dx + dy*dy);
   return den ? num / den : 0;
 }
+
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 // --- PKT Format ---
 function pkt(ts) {
@@ -676,54 +679,34 @@ async function pollPhotos() {
     grid.innerHTML = '<div class="label">No photos yet</div>';
     return;
   }
-  const sorted = Object.keys(keys).sort((a, b) => (parseInt(b)||0) - (parseInt(a)||0));
-  for (const ts of sorted) {
-    if (cachedPhotos[ts]) continue;
-    const docTs = parseInt(ts);
-    try {
-      const doc = await fetchRTDB(`devices/${selectedDevice}/photos/${ts}`);
-      if (!doc) continue;
-      const data = doc.data || '';
-      if (data && data.startsWith('/9j/')) {
-        cachedPhotos[ts] = doc;
-        const wrap = document.createElement('div');
-        wrap.className = 'pwrap';
-        const img = document.createElement('img');
-        img.src = 'data:image/jpeg;base64,' + data;
-        img.loading = 'lazy';
-        const cap = document.createElement('div');
-        cap.className = 'pcap';
-        const dateTaken = doc.dateTaken ? 'Captured: ' + pkt(doc.dateTaken) : '';
-        const synced = 'Synced: ' + pkt(docTs);
-        const name = doc.fileName ? doc.fileName : '';
-        const line1 = document.createElement('div');
-        line1.textContent = name ? name : (dateTaken || synced);
-        const line2 = document.createElement('div');
-        line2.className = 'ptime';
-        line2.textContent = dateTaken ? dateTaken + ' | ' + synced : synced;
-        cap.append(line1, line2);
-        wrap.append(img, cap);
-        grid.prepend(wrap);
-      }
-    } catch {}
+  const uncached = Object.keys(keys).filter(k => !cachedPhotos[k]);
+  for (let i = 0; i < uncached.length; i += 5) {
+    await Promise.all(uncached.slice(i, i + 5).map(async ts => {
+      if (cachedPhotos[ts]) return;
+      try {
+        const doc = await fetchRTDB(`devices/${selectedDevice}/photos/${ts}`);
+        if (doc && doc.data && doc.data.startsWith('/9j/')) cachedPhotos[ts] = doc;
+      } catch {}
+    }));
   }
-  if (!Object.keys(cachedPhotos).length) grid.innerHTML = '<div class="label">No photos yet</div>';
+  const allKeys = Object.keys(cachedPhotos).sort((a, b) => (parseInt(b)||0) - (parseInt(a)||0));
+  if (!allKeys.length) { grid.innerHTML = '<div class="label">No photos yet</div>'; return; }
+  grid.innerHTML = allKeys.map(ts => {
+    const doc = cachedPhotos[ts];
+    const docTs = parseInt(ts);
+    const dateTaken = doc.dateTaken ? 'Captured: ' + pkt(doc.dateTaken) : '';
+    const synced = 'Synced: ' + pkt(docTs);
+    const name = doc.fileName ? doc.fileName : '';
+    const line1 = name || dateTaken || synced;
+    const line2 = dateTaken ? dateTaken + ' | ' + synced : synced;
+    return '<div class="pwrap"><img src="data:image/jpeg;base64,' + doc.data + '" loading="lazy"><div class="pcap"><div>' + escHtml(line1) + '</div><div class="ptime">' + escHtml(line2) + '</div></div></div>';
+  }).join('');
 }
 
-async function pollApps() {
-  if (!selectedDevice) return;
-  const rtdbData = await fetchRTDB(`devices/${selectedDevice}/apps`);
+function renderApps(sorted) {
   const chart = document.getElementById('appsChart');
-  if (!rtdbData || typeof rtdbData !== 'object') {
-    chart.innerHTML = '<div class="label">No app usage data yet</div>';
-    return;
-  }
-  const sorted = Object.values(rtdbData).map(v => ({
-    name: v.appName || v.packageName || '?',
-    ms: parseInt(v.totalForegroundMs || '0'),
-    dailyMs: v.dailyMs || null
-  })).sort((a, b) => b.ms - a.ms).slice(0, 15);
-  const maxMs = sorted.length ? sorted[0].ms : 1;
+  if (!sorted || !sorted.length) { chart.innerHTML = '<div class="label">No app usage data yet</div>'; return; }
+  const maxMs = sorted[0].ms || 1;
   const period = document.querySelector('.app-period-btn.active')?.dataset?.period || 'today';
   let html = '';
   if (period === 'today') {
@@ -733,7 +716,10 @@ async function pollApps() {
         <div class="bar-fill" style="width:${(a.ms/maxMs*100).toFixed(0)}%"></div>
         <span class="bar-val">${(a.ms/60000).toFixed(1)}m</span>
       </div>`).join('');
-  } else if (period === 'yesterday' && sorted[0]?.dailyMs) {
+  } else if (period === 'yesterday') {
+    if (!sorted[0]?.dailyMs) {
+      chart.innerHTML = '<div class="label">No daily breakdown available</div>'; return;
+    }
     const yMax = Math.max(...sorted.map(a => a.dailyMs?.yesterday || 0), 1);
     html = sorted.map(a => `
       <div class="bar-row">
@@ -741,7 +727,10 @@ async function pollApps() {
         <div class="bar-fill" style="width:${((a.dailyMs?.yesterday||0)/yMax*100).toFixed(0)}%"></div>
         <span class="bar-val">${((a.dailyMs?.yesterday||0)/60000).toFixed(1)}m</span>
       </div>`).join('');
-  } else if (period === 'week' && sorted[0]?.dailyMs) {
+  } else if (period === 'week') {
+    if (!sorted[0]?.dailyMs) {
+      chart.innerHTML = '<div class="label">No weekly breakdown available</div>'; return;
+    }
     const wMax = Math.max(...sorted.map(a => a.dailyMs?.weekAvg || 0), 1);
     html = sorted.map(a => `
       <div class="bar-row">
@@ -749,15 +738,24 @@ async function pollApps() {
         <div class="bar-fill" style="width:${((a.dailyMs?.weekAvg||0)/wMax*100).toFixed(0)}%"></div>
         <span class="bar-val">${((a.dailyMs?.weekAvg||0)/60000).toFixed(1)}m</span>
       </div>`).join('');
-  } else {
-    html = sorted.map(a => `
-      <div class="bar-row">
-        <span class="bar-label">${a.name}</span>
-        <div class="bar-fill" style="width:${(a.ms/maxMs*100).toFixed(0)}%"></div>
-        <span class="bar-val">${(a.ms/60000).toFixed(1)}m</span>
-      </div>`).join('');
   }
   chart.innerHTML = html || '<div class="label">No app usage data for this period</div>';
+}
+
+async function pollApps() {
+  if (!selectedDevice) return;
+  const rtdbData = await fetchRTDB(`devices/${selectedDevice}/apps`);
+  if (!rtdbData || typeof rtdbData !== 'object') {
+    appsCache = null;
+    document.getElementById('appsChart').innerHTML = '<div class="label">No app usage data yet</div>';
+    return;
+  }
+  appsCache = Object.values(rtdbData).map(v => ({
+    name: v.appName || v.packageName || '?',
+    ms: parseInt(v.totalForegroundMs || '0'),
+    dailyMs: v.dailyMs || null
+  })).sort((a, b) => b.ms - a.ms).slice(0, 15);
+  renderApps(appsCache);
 }
 
 async function pollHistory() {
@@ -1234,7 +1232,8 @@ document.querySelectorAll('.app-period-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.app-period-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    pollApps();
+    if (appsCache) renderApps(appsCache);
+    else pollApps();
   });
 });
 
