@@ -150,17 +150,25 @@ let devices = {};
 let selectedDevice = null;
 let locationHistory = [];
 let marker, accuracyCircle, trail;
-let geofences = JSON.parse(localStorage.getItem('geofences') || '[]');
-if (!geofences.length) {
-  geofences.push({ id: 'home', name: 'Home', lat: 32.04551, lng: 73.43149, radius: 1000, active: true });
-  localStorage.setItem('geofences', JSON.stringify(geofences));
-}
+let geofences = [];
 let alertedZones = new Set();
 let readBudget = JSON.parse(localStorage.getItem('readBudget') || '{"count":0,"day":""}');
 let cachedPhotos = {};
 let cachedAddresses = JSON.parse(localStorage.getItem('geoCache') || '{}');
 let nomQueue = [];
 let nomProcessing = false;
+
+function loadGeofences(deviceId) {
+  if (!deviceId) { geofences = []; renderGeofences(); renderGeofenceList(); return; }
+  geofences = JSON.parse(localStorage.getItem('geofences_' + deviceId) || '[]');
+  if (!geofences.length) {
+    geofences.push({ id: 'home', name: 'Home', lat: 32.04551, lng: 73.43149, radius: 1000, active: true });
+    localStorage.setItem('geofences_' + deviceId, JSON.stringify(geofences));
+  }
+  alertedZones = new Set();
+  renderGeofences();
+  renderGeofenceList();
+}
 let playbackRunning = false;
 let lastUpdateTime = 0;
 let playbackIdx = 0;
@@ -272,7 +280,8 @@ function pktShort(ts) {
 
 // --- Geofences ---
 function saveGeofences() {
-  localStorage.setItem('geofences', JSON.stringify(geofences));
+  if (!selectedDevice) return;
+  localStorage.setItem('geofences_' + selectedDevice, JSON.stringify(geofences));
   renderGeofenceList();
 }
 
@@ -383,6 +392,7 @@ document.getElementById('deviceSelect').addEventListener('change', function() {
   locationHistory = [];
   cachedPhotos = {};
   if (trail) map.removeLayer(trail);
+  loadGeofences(selectedDevice);
   pollAll();
 });
 
@@ -458,6 +468,7 @@ async function fetchDevices() {
     return;
   }
   selectedDevice = activeIds[0];
+  loadGeofences(selectedDevice);
   localStorage.setItem('selectedDevice', selectedDevice);
   activeIds.forEach(id => { devices[id] = { id, label: id.slice(0, 8) + '...', model: '', manuf: '' }; });
   sel.innerHTML = activeIds.map(k => `<option value="${k}">${devices[k].label}</option>`).join('');
@@ -770,8 +781,6 @@ async function init() {
   try { await fetchDevices(); } catch {}
   if (selectedDevice) try { await pollAll(); } catch {}
   startPolling();
-  renderGeofences();
-  renderGeofenceList();
   if (geofences.length === 0) {
     showAlert('Right-click on map to add geofences', 'warn');
   }
