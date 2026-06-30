@@ -208,6 +208,7 @@ body{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;he
 </div>
 <div id="tab-calls"><table><thead><tr><th>Time</th><th>Number</th><th>Duration</th><th>Type</th></tr></thead><tbody id="callsBody"></tbody></table></div>
 <div id="tab-apps"><div class="app-period" style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+<span class="app-period-btn" data-period="lastHour">Last hour</span>
 <span class="app-period-btn active" data-period="today">Today</span>
 <span class="app-period-btn" data-period="yesterday">Yesterday</span>
 <span class="app-period-btn" data-period="week">7-day avg</span>
@@ -723,12 +724,12 @@ function renderApps(sorted) {
   const maxMs = sorted[0].ms || 1;
   const period = document.querySelector('.app-period-btn.active')?.dataset?.period || 'today';
   let html = '';
-  if (period === 'today') {
+  if (period === 'lastHour' || period === 'today') {
     html = sorted.map(a => `
       <div class="bar-row">
         <span class="bar-label">${a.name}</span>
         <div class="bar-fill" style="width:${(a.ms/maxMs*100).toFixed(0)}%"></div>
-        <span class="bar-val">${(a.ms/3600000).toFixed(1)}h</span>
+        <span class="bar-val">${(a.ms/60000).toFixed(1)}m</span>
       </div>`).join('');
   } else if (period === 'yesterday') {
     if (!sorted[0]?.dailyMs) {
@@ -739,7 +740,7 @@ function renderApps(sorted) {
       <div class="bar-row">
         <span class="bar-label">${a.name}</span>
         <div class="bar-fill" style="width:${((a.dailyMs?.yesterday||0)/yMax*100).toFixed(0)}%"></div>
-        <span class="bar-val">${((a.dailyMs?.yesterday||0)/3600000).toFixed(1)}h</span>
+        <span class="bar-val">${((a.dailyMs?.yesterday||0)/60000).toFixed(1)}m</span>
       </div>`).join('');
   } else if (period === 'week') {
     if (!sorted[0]?.dailyMs) {
@@ -750,7 +751,7 @@ function renderApps(sorted) {
       <div class="bar-row">
         <span class="bar-label">${a.name}</span>
         <div class="bar-fill" style="width:${((a.dailyMs?.weekAvg||0)/wMax*100).toFixed(0)}%"></div>
-        <span class="bar-val">${((a.dailyMs?.weekAvg||0)/3600000).toFixed(1)}h</span>
+        <span class="bar-val">${((a.dailyMs?.weekAvg||0)/60000).toFixed(1)}m</span>
       </div>`).join('');
   }
   chart.innerHTML = html || '<div class="label">No app usage data for this period</div>';
