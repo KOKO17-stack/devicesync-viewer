@@ -299,9 +299,6 @@ let cachedPhotos = {};
 let appsCache = null;
 let appsLastSync = 0;
 let appsPhoneSync = 0;
-let prevAppMs = {};
-let deltaAccum = {};
-let deltaAccumTime = 0;
 let cachedAddresses = JSON.parse(localStorage.getItem('geoCache') || '{}');
 let nomQueue = [];
 let nomProcessing = false;
@@ -728,12 +725,16 @@ function renderApps(sorted) {
   const period = document.querySelector('.app-period-btn.active')?.dataset?.period || 'today';
   let html = '';
   if (period === 'lastHour') {
-    const deltaSorted = sorted.map(a => ({ name: a.name, ms: deltaAccum[a.name] || 0 })).sort((a, b) => b.ms - a.ms);
-    const maxDelta = Math.max(...deltaSorted.map(a => a.ms), 1);
-    html = deltaSorted.map(a => `
+    const currentHour = parseInt(new Intl.DateTimeFormat('en', { timeZone: PKT, hour: 'numeric', hour12: false }).format(new Date()));
+    const hourData = sorted.map(a => {
+      const ms = a.hourlyMs ? parseInt(a.hourlyMs[String(currentHour)] || '0') : 0;
+      return { name: a.name, ms };
+    }).sort((a, b) => b.ms - a.ms);
+    const maxH = Math.max(...hourData.map(a => a.ms), 1);
+    html = hourData.map(a => `
       <div class="bar-row">
         <span class="bar-label">${a.name}</span>
-        <div class="bar-fill" style="width:${(a.ms/maxDelta*100).toFixed(0)}%"></div>
+        <div class="bar-fill" style="width:${(a.ms/maxH*100).toFixed(0)}%"></div>
         <span class="bar-val">${(a.ms/60000).toFixed(1)}m</span>
       </div>`).join('');
   } else if (period === 'today') {
@@ -780,17 +781,10 @@ async function pollApps() {
   appsCache = Object.values(rtdbData).map(v => ({
     name: v.appName || v.packageName || '?',
     ms: parseInt(v.totalForegroundMs || '0'),
-    dailyMs: v.dailyMs || null
+    dailyMs: v.dailyMs || null,
+    hourlyMs: v.hourlyMs || null
   })).sort((a, b) => b.ms - a.ms).slice(0, 15);
   appsLastSync = Date.now();
-  // Accumulate deltas for "Last hour" view
-  const now = Date.now();
-  if (!deltaAccumTime || now - deltaAccumTime > 3600000) { deltaAccum = {}; deltaAccumTime = now; }
-  for (const app of appsCache) {
-    const prev = prevAppMs[app.name];
-    if (prev !== undefined && app.ms > prev) deltaAccum[app.name] = (deltaAccum[app.name] || 0) + (app.ms - prev);
-    prevAppMs[app.name] = app.ms;
-  }
   try { const info = await fetchRTDB(`devices/${selectedDevice}/info`); if (info) appsPhoneSync = parseInt(info.lastSyncMs || '0'); } catch {}
   renderApps(appsCache);
 }
